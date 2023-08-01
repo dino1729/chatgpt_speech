@@ -110,11 +110,11 @@ def translate_text(text, target_language):
 
 conversation = [{
     "role": "system",
-    "content": "You are a helpful and super-intelligent regional assistant based in Hyderabad, Telangana, that accurately answers user queries. Be accurate, helpful, concise, and clear."
+    "content": "You are a helpful and super-intelligent assistant, that accurately answers user queries. Be accurate, helpful, concise, and clear."
 }]
 
 while True:
-    print("Speak in Telugu or Hindi: Press 'Enter' to start recording, and 'q' to stop and process the audio.")
+    print("Speak in English/Telugu/Hindi: Press 'Enter' to start recording, and 'q' to stop and process the audio.")
     input("Press 'Enter' and ask your question...")
     
     # Start recording audio
