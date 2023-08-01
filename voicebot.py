@@ -18,8 +18,8 @@ azurespeechkey = os.environ.get("AZURESPEECHKEY")
 azurespeechregion = os.environ.get("AZURESPEECHREGION")
 
 OPENAI_COMPLETION_OPTIONS = {
-    "temperature": 0.7,
-    "max_tokens": 150,
+    "temperature": 0.5,
+    "max_tokens": 420,
     "top_p": 1,
     "frequency_penalty": 0,
     "presence_penalty": 0
@@ -115,57 +115,63 @@ conversation = [{
     "content": "You are a helpful and super-intelligent assistant that accurately answers user queries. Be accurate, helpful, concise, and clear."
 }]
 
-# Set up GPIO button
-BUTTON_PIN = 17
+# Set up GPIO
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(BUTTON_PIN, GPIO.IN)
+BUTTON_PIN = 23
+GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
-while True:
-    print("Press the button to start recording...")
-    GPIO.wait_for_edge(BUTTON_PIN, GPIO.RISING)
-    print("Recording...")
-    
-    # Start recording audio
-    audio_path = "user_audio.wav"
-    recording = sd.rec(int(5 * 44100), samplerate=44100, channels=1)
-    
-    # sd.wait()
-    # sf.write(audio_path, recording, 44100, 'PCM_16')
-
+recording = False
+try:
     while True:
-        if GPIO.input(BUTTON_PIN) == GPIO.RISING:
-            break
+        print("Press the button to start/stop recording...")
 
-    sd.stop()
-    sf.write(audio_path, recording, 44100, 'PCM_16')
+        # Wait for the button press
+        GPIO.wait_for_edge(BUTTON_PIN, GPIO.RISING)
 
-    print("Recording stopped. Processing audio...")
+        # Toggle the recording state
+        recording = not recording
 
-    # Transcribe Telugu/Hindi audio to English text using Azure Speech Recognition
-    english_text, detected_audio_language = transcribe_audio(audio_path)
+        if recording:
+            print("Recording started...")
+            # Start recording audio
+            audio_path = "user_audio.wav"
+            recording_data = sd.rec(int(8 * 44100), samplerate=44100, channels=1)
+        else:
+            print("Recording stopped. Processing audio...")
+            sd.stop()
+            sf.write(audio_path, recording_data, 44100, 'PCM_16')
 
-    print("You said {} in {}".format(english_text, detected_audio_language))
-    new_message = {"role": "user", "content": english_text}
-    conversation.append(new_message)
+            # Transcribe Telugu/Hindi audio to English text using Azure Speech Recognition
+            english_text, detected_audio_language = transcribe_audio(audio_path)
 
-    response = openai.ChatCompletion.create(
-        engine="gpt-3p5-turbo-16k",
-        messages= conversation,
-        **OPENAI_COMPLETION_OPTIONS,
-        )
+            print("You said {} in {}".format(english_text, detected_audio_language))
+            new_message = {"role": "user", "content": english_text}
+            conversation.append(new_message)
 
-    assistant_reply = response['choices'][0]['message']['content']
-    print("Bot said: {}".format(assistant_reply))
+            response = openai.ChatCompletion.create(
+                engine="gpt-3p5-turbo-16k",
+                messages=conversation,
+                **OPENAI_COMPLETION_OPTIONS,
+            )
 
-    new_assistant_message = {"role": "assistant", "content": assistant_reply}
-    conversation.append(new_assistant_message)
+            assistant_reply = response['choices'][0]['message']['content']
+            print("Bot said: {}".format(assistant_reply))
 
-    #Translate the message to Telugu/Hindi
-    translated_message = translate_text(assistant_reply, detected_audio_language)
-    # Convert bot response to Telugu/Hindi audio speech
-    tts_output_path = "bot_response.mp3"
-    text_to_speech(translated_message, tts_output_path, detected_audio_language)
+            new_assistant_message = {"role": "assistant", "content": assistant_reply}
+            conversation.append(new_assistant_message)
 
-    #Delete the audio files
-    os.remove(audio_path)
-    os.remove(tts_output_path)
+            # Translate the message to Telugu/Hindi
+            translated_message = translate_text(assistant_reply, detected_audio_language)
+            # Convert bot response to Telugu/Hindi audio speech
+            tts_output_path = "bot_response.mp3"
+            text_to_speech(translated_message, tts_output_path, detected_audio_language)
+
+            # Delete the audio files
+            os.remove(audio_path)
+            os.remove(tts_output_path)
+
+except KeyboardInterrupt:
+    print("\nScript terminated by user.")
+finally:
+    # Clean up GPIO
+    GPIO.cleanup()

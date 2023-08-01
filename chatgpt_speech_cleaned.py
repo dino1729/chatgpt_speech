@@ -119,7 +119,7 @@ while True:
     
     # Start recording audio
     audio_path = "user_audio.wav"
-    recording = sd.rec(int(5 * 44100), samplerate=44100, channels=1)
+    recording = sd.rec(int(8 * 44100), samplerate=44100, channels=1)
     sd.wait()
     sf.write(audio_path, recording, 44100, 'PCM_16')
 
