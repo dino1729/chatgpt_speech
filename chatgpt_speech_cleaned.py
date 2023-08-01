@@ -7,6 +7,9 @@ from regex import D
 import sounddevice as sd
 import soundfile as sf
 import requests, uuid
+import tiktoken
+import time
+import json
 
 openai.api_type = "azure"
 openai.api_base = os.environ.get("AZUREOPENAIENDPOINT")
@@ -108,46 +111,79 @@ def translate_text(text, target_language):
     response = request.json()
     return response[0]['translations'][0]['text']
 
-conversation = [{
+system_prompt = [{
     "role": "system",
     "content": "You are a helpful and super-intelligent assistant, that accurately answers user queries. Be accurate, helpful, concise, and clear."
 }]
 
-while True:
-    print("Speak in English/Telugu/Hindi: Press 'Enter' to start recording, and 'q' to stop and process the audio.")
-    input("Press 'Enter' and ask your question...")
-    
-    # Start recording audio
-    audio_path = "user_audio.wav"
-    recording = sd.rec(int(8 * 44100), samplerate=44100, channels=1)
-    sd.wait()
-    sf.write(audio_path, recording, 44100, 'PCM_16')
+encoding = tiktoken.get_encoding("cl100k_base")
+# Define the maximum token count allowed
+max_token_count = 16000
+# Define the maximum length of time (in seconds) that the script will wait for a user input before resetting the conversation
+max_timeout = 600
+# Initialize the last activity time
+last_activity_time = time.time()
 
-    # Transcribe Telugu/Hindi audio to English text using Azure Speech Recognition
-    english_text, detected_audio_language = transcribe_audio(audio_path)
+# Set the initial conversation to the default system prompt
+conversation = system_prompt.copy()
 
-    print("You said {} in {}".format(english_text, detected_audio_language))
-    new_message = {"role": "user", "content": english_text}
-    conversation.append(new_message)
+try:
+    while True:
 
-    response = openai.ChatCompletion.create(
-        engine="gpt-3p5-turbo-16k",
-        messages= conversation,
-        **OPENAI_COMPLETION_OPTIONS,
-        )
+        # Check if it's time to reset the conversation based on token count or inactivity
+        if len(encoding.encode(json.dumps(conversation))) > max_token_count or time.time() - last_activity_time > max_timeout:
+            conversation = system_prompt.copy()  # Reset the conversation to the default
+            print("Conversation reset.")
 
-    assistant_reply = response['choices'][0]['message']['content']
-    print("Bot said: {}".format(assistant_reply))
+        print("Speak in English/Telugu/Hindi: Press 'Enter' to start recording, and 'q' to stop and process the audio.")
+        input("Press 'Enter' and ask your question...")
+        
+        # Update the last activity time
+        last_activity_time = time.time()
 
-    new_assistant_message = {"role": "assistant", "content": assistant_reply}
-    conversation.append(new_assistant_message)
+        # Start recording audio
+        audio_path = "user_audio.wav"
+        recording = sd.rec(int(8 * 44100), samplerate=44100, channels=1)
+        sd.wait()
+        sf.write(audio_path, recording, 44100, 'PCM_16')
 
-    #Translate the message to Telugu/Hindi
-    translated_message = translate_text(assistant_reply, detected_audio_language)
-    # Convert bot response to Telugu/Hindi audio speech
-    tts_output_path = "bot_response.mp3"
-    text_to_speech(translated_message, tts_output_path, detected_audio_language)
+        try:
+            # Transcribe Telugu/Hindi audio to English text using Azure Speech Recognition
+            english_text, detected_audio_language = transcribe_audio(audio_path)
 
-    #Delete the audio files
-    os.remove(audio_path)
-    os.remove(tts_output_path)
+            print("You said: {} in {}".format(english_text, detected_audio_language))
+            new_message = {"role": "user", "content": english_text}
+            conversation.append(new_message)
+
+            response = openai.ChatCompletion.create(
+                engine="gpt-3p5-turbo-16k",
+                messages= conversation,
+                **OPENAI_COMPLETION_OPTIONS,
+                )
+
+            assistant_reply = response['choices'][0]['message']['content']
+            print("Bot said: {}".format(assistant_reply))
+
+            new_assistant_message = {"role": "assistant", "content": assistant_reply}
+            conversation.append(new_assistant_message)
+            tts_output_path = "bot_response.mp3"
+
+            try:
+                #Translate the message to Telugu/Hindi
+                translated_message = translate_text(assistant_reply, detected_audio_language)
+                # Convert bot response to Telugu/Hindi audio speech
+                text_to_speech(translated_message, tts_output_path, detected_audio_language)
+            except Exception as e:
+                print("Translation error:", str(e))
+                # Convert bot response to English audio speech
+                text_to_speech("Sorry, I could not answer that. Please try again.", tts_output_path, "en-US")
+
+            #Delete the audio files
+            os.remove(audio_path)
+            os.remove(tts_output_path)
+        
+        except Exception as e:
+                print("Transcription error:", str(e))
+
+except KeyboardInterrupt:
+    print("\nScript terminated by user.")

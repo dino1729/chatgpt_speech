@@ -7,7 +7,9 @@ from regex import D
 import sounddevice as sd
 import soundfile as sf
 import requests, uuid
+import tiktoken
 import time
+import json
 
 import RPi.GPIO as GPIO
 
@@ -111,10 +113,21 @@ def translate_text(text, target_language):
     response = request.json()
     return response[0]['translations'][0]['text']
 
-conversation = [{
+system_prompt = [{
     "role": "system",
-    "content": "You are a helpful and super-intelligent assistant that accurately answers user queries. Be accurate, helpful, concise, and clear."
+    "content": "You are a helpful and super-intelligent assistant, that accurately answers user queries. Be accurate, helpful, concise, and clear."
 }]
+
+encoding = tiktoken.get_encoding("cl100k_base")
+# Define the maximum token count allowed
+max_token_count = 16000
+# Define the maximum length of time (in seconds) that the script will wait for a user input before resetting the conversation
+max_timeout = 600
+# Initialize the last activity time
+last_activity_time = time.time()
+
+# Set the initial conversation to the default system prompt
+conversation = system_prompt.copy()
 # Set up GPIO
 GPIO.setmode(GPIO.BCM)
 BUTTON_PIN = 23
@@ -123,7 +136,16 @@ GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 recording = False
 try:
     while True:
+
+        # Check if it's time to reset the conversation based on token count or inactivity
+        if len(encoding.encode(json.dumps(conversation))) > max_token_count or time.time() - last_activity_time > max_timeout:
+            conversation = system_prompt.copy()  # Reset the conversation to the default
+            print("Conversation reset.")        
+
         print("Press the button to start/stop recording...")
+
+        # Update the last activity time
+        last_activity_time = time.time()
 
         # Wait for the button press
         GPIO.wait_for_edge(BUTTON_PIN, GPIO.RISING)
@@ -145,7 +167,7 @@ try:
             # Transcribe Telugu/Hindi audio to English text using Azure Speech Recognition
             try:
                 english_text, detected_audio_language = transcribe_audio(audio_path)
-                print("You said {} in {}".format(english_text, detected_audio_language))
+                print("You said: {} in {}".format(english_text, detected_audio_language))
                 new_message = {"role": "user", "content": english_text}
                 conversation.append(new_message)
 
@@ -160,7 +182,6 @@ try:
 
                 new_assistant_message = {"role": "assistant", "content": assistant_reply}
                 conversation.append(new_assistant_message)
-
                 tts_output_path = "bot_response.mp3"
 
                 try:
@@ -168,7 +189,7 @@ try:
                     text_to_speech(translated_message, tts_output_path, detected_audio_language)
                 except Exception as e:
                     print("Translation error:", str(e))
-                    text_to_speech(assistant_reply, tts_output_path, "en-US")
+                    text_to_speech("Sorry, I couldn't answer that.", tts_output_path, "en-US")
 
                 # Delete the audio files
                 os.remove(audio_path)
