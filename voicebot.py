@@ -7,6 +7,7 @@ from regex import D
 import sounddevice as sd
 import soundfile as sf
 import requests, uuid
+import time
 
 import RPi.GPIO as GPIO
 
@@ -126,7 +127,8 @@ try:
 
         # Wait for the button press
         GPIO.wait_for_edge(BUTTON_PIN, GPIO.RISING)
-
+        # Add a debounce delay
+        time.sleep(0.2)
         # Toggle the recording state
         recording = not recording
 
