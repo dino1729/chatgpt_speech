@@ -114,7 +114,6 @@ conversation = [{
     "role": "system",
     "content": "You are a helpful and super-intelligent assistant that accurately answers user queries. Be accurate, helpful, concise, and clear."
 }]
-
 # Set up GPIO
 GPIO.setmode(GPIO.BCM)
 BUTTON_PIN = 23
@@ -142,36 +141,39 @@ try:
             sf.write(audio_path, recording_data, 44100, 'PCM_16')
 
             # Transcribe Telugu/Hindi audio to English text using Azure Speech Recognition
-            english_text, detected_audio_language = transcribe_audio(audio_path)
-
-            print("You said {} in {}".format(english_text, detected_audio_language))
-            new_message = {"role": "user", "content": english_text}
-            conversation.append(new_message)
-
-            response = openai.ChatCompletion.create(
-                engine="gpt-3p5-turbo-16k",
-                messages=conversation,
-                **OPENAI_COMPLETION_OPTIONS,
-            )
-
-            assistant_reply = response['choices'][0]['message']['content']
-            print("Bot said: {}".format(assistant_reply))
-
-            new_assistant_message = {"role": "assistant", "content": assistant_reply}
-            conversation.append(new_assistant_message)
-
-            tts_output_path = "bot_response.mp3"
-
             try:
-                translated_message = translate_text(assistant_reply, detected_audio_language)
-                text_to_speech(translated_message, tts_output_path, detected_audio_language)
-            except Exception as e:
-                print("Error while recording. Please try again: {}".format(e))
-                text_to_speech(assistant_reply, tts_output_path, "en-US")
+                english_text, detected_audio_language = transcribe_audio(audio_path)
+                print("You said {} in {}".format(english_text, detected_audio_language))
+                new_message = {"role": "user", "content": english_text}
+                conversation.append(new_message)
 
-            # Delete the audio files
-            os.remove(audio_path)
-            os.remove(tts_output_path)
+                response = openai.ChatCompletion.create(
+                    engine="gpt-3p5-turbo-16k",
+                    messages=conversation,
+                    **OPENAI_COMPLETION_OPTIONS,
+                )
+
+                assistant_reply = response['choices'][0]['message']['content']
+                print("Bot said: {}".format(assistant_reply))
+
+                new_assistant_message = {"role": "assistant", "content": assistant_reply}
+                conversation.append(new_assistant_message)
+
+                tts_output_path = "bot_response.mp3"
+
+                try:
+                    translated_message = translate_text(assistant_reply, detected_audio_language)
+                    text_to_speech(translated_message, tts_output_path, detected_audio_language)
+                except Exception as e:
+                    print("Translation error:", str(e))
+                    text_to_speech(assistant_reply, tts_output_path, "en-US")
+
+                # Delete the audio files
+                os.remove(audio_path)
+                os.remove(tts_output_path)
+
+            except Exception as e:
+                print("Transcription error:", str(e))
 
 except KeyboardInterrupt:
     print("\nScript terminated by user.")
