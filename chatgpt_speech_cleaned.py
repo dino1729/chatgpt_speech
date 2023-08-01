@@ -16,8 +16,8 @@ azurespeechkey = os.environ.get("AZURESPEECHKEY")
 azurespeechregion = os.environ.get("AZURESPEECHREGION")
 
 OPENAI_COMPLETION_OPTIONS = {
-    "temperature": 0.7,
-    "max_tokens": 150,
+    "temperature": 0.5,
+    "max_tokens": 420,
     "top_p": 1,
     "frequency_penalty": 0,
     "presence_penalty": 0
