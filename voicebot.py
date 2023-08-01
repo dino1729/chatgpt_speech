@@ -160,11 +160,14 @@ try:
             new_assistant_message = {"role": "assistant", "content": assistant_reply}
             conversation.append(new_assistant_message)
 
-            # Translate the message to Telugu/Hindi
-            translated_message = translate_text(assistant_reply, detected_audio_language)
-            # Convert bot response to Telugu/Hindi audio speech
             tts_output_path = "bot_response.mp3"
-            text_to_speech(translated_message, tts_output_path, detected_audio_language)
+
+            try:
+                translated_message = translate_text(assistant_reply, detected_audio_language)
+                text_to_speech(translated_message, tts_output_path, detected_audio_language)
+            except Exception as e:
+                print("Error while recording. Please try again: {}".format(e))
+                text_to_speech(assistant_reply, tts_output_path, "en-US")
 
             # Delete the audio files
             os.remove(audio_path)
@@ -172,6 +175,7 @@ try:
 
 except KeyboardInterrupt:
     print("\nScript terminated by user.")
+
 finally:
     # Clean up GPIO
     GPIO.cleanup()
