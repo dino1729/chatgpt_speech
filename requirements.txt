@@ -1,5 +1,7 @@
 azure-cognitiveservices-speech
 openai
+cohere
+google.generativeai
 regex
 requests
 RPi.GPIO

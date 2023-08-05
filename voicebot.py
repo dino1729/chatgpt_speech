@@ -1,8 +1,11 @@
+from hmac import new
 import os
 from re import T
 import re
 import openai
 import azure.cognitiveservices.speech as speechsdk
+import cohere
+import google.generativeai as palm
 from regex import D
 import sounddevice as sd
 import soundfile as sf
@@ -10,15 +13,17 @@ import requests, uuid
 import tiktoken
 import time
 import json
-
+import dotenv
 import RPi.GPIO as GPIO
 
-openai.api_type = "azure"
-openai.api_base = os.environ.get("AZUREOPENAIENDPOINT")
-openai.api_version = "2023-03-15-preview"
-openai.api_key = os.environ.get("AZUREOPENAIAPIKEY")
-azurespeechkey = os.environ.get("AZURESPEECHKEY")
-azurespeechregion = os.environ.get("AZURESPEECHREGION")
+# Get API keys from environment variables
+dotenv.load_dotenv()
+cohere_api_key = os.environ["COHERE_API_KEY"]
+google_palm_api_key = os.environ["GOOGLE_PALM_API_KEY"]
+azure_api_key = os.environ["AZURE_API_KEY"]
+azurespeechkey = os.environ.get("AZURE_SPEECH_KEY")
+azurespeechregion = os.environ.get("AZURE_SPEECH_REGION")
+azuretexttranslatorkey = os.environ.get("AZURE_TEXT_TRANSLATOR_KEY")
 
 OPENAI_COMPLETION_OPTIONS = {
     "temperature": 0.5,
@@ -88,10 +93,10 @@ def text_to_speech(text, output_path, language):
 def translate_text(text, target_language):
     
     # Add your key and endpoint
-    key = os.environ.get("AZURETEXTTRANSLATORKEY")
+    key = azuretexttranslatorkey
     endpoint = "https://api.cognitive.microsofttranslator.com"
     # location, also known as region.
-    location = os.environ.get("AZURESPEECHREGION")
+    location = azurespeechregion
     path = '/translate'
     constructed_url = endpoint + path
     params = {
@@ -113,11 +118,48 @@ def translate_text(text, target_language):
     response = request.json()
     return response[0]['translations'][0]['text']
 
+def generate_chat(model_name, conversation, temperature, max_tokens):
+    if model_name == "COHERE":
+        co = cohere.Client(cohere_api_key)
+        response = co.generate(
+            model='command-nightly',
+            prompt=str(conversation).replace("'", '"'),
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        return response.generations[0].text
+    elif model_name == "PALM":
+        palm.configure(api_key=google_palm_api_key)
+        response = palm.chat(
+            model="models/chat-bison-001",
+            messages=str(conversation).replace("'", '"'),
+            temperature=temperature,
+        )
+        return response.last
+    elif model_name == "OPENAI":
+        openai.api_type = "azure"
+        openai.api_base = os.getenv("AZURE_API_BASE")
+        openai.api_version = os.getenv("AZURE_CHATAPI_VERSION")
+        openai.api_key = azure_api_key
+        response = openai.ChatCompletion.create(
+            engine="gpt-3p5-turbo-16k",
+            messages=conversation,
+            **OPENAI_COMPLETION_OPTIONS,
+        )
+        return response['choices'][0]['message']['content']
+    else:
+        return "Invalid model name"
+
 system_prompt = [{
     "role": "system",
     "content": "You are a helpful and super-intelligent assistant, that accurately answers user queries. Be accurate, helpful, concise, and clear."
 }]
-
+temperature = 0.5
+max_tokens = 420
+model_name = "OPENAI"
+audio_path = "user_audio.wav"
+tts_output_path = "bot_response.mp3"
+# Define the encoding
 encoding = tiktoken.get_encoding("cl100k_base")
 # Define the maximum token count allowed
 max_token_count = 16000
@@ -157,39 +199,36 @@ try:
         if recording:
             print("Recording started...")
             # Start recording audio
-            audio_path = "user_audio.wav"
             recording_data = sd.rec(int(8 * 44100), samplerate=44100, channels=1)
         else:
             print("Recording stopped. Processing audio...")
             sd.stop()
             sf.write(audio_path, recording_data, 44100, 'PCM_16')
-
             # Transcribe Telugu/Hindi audio to English text using Azure Speech Recognition
             try:
                 english_text, detected_audio_language = transcribe_audio(audio_path)
-                print("You said: {} in {}".format(english_text, detected_audio_language))
+                print("You: {}; Language {}".format(english_text, detected_audio_language))
                 new_message = {"role": "user", "content": english_text}
                 conversation.append(new_message)
-
-                response = openai.ChatCompletion.create(
-                    engine="gpt-3p5-turbo-16k",
-                    messages=conversation,
-                    **OPENAI_COMPLETION_OPTIONS,
-                )
-
-                assistant_reply = response['choices'][0]['message']['content']
-                print("Bot said: {}".format(assistant_reply))
-
-                new_assistant_message = {"role": "assistant", "content": assistant_reply}
-                conversation.append(new_assistant_message)
-                tts_output_path = "bot_response.mp3"
-
+                # Generate a response using the selected model
                 try:
-                    translated_message = translate_text(assistant_reply, detected_audio_language)
-                    text_to_speech(translated_message, tts_output_path, detected_audio_language)
+                    assistant_reply = generate_chat(model_name, conversation, temperature, max_tokens)
+                    print("{} Bot: {}".format(model_name, assistant_reply))
+                    new_assistant_message = {"role": "assistant", "content": assistant_reply}
+                    conversation.append(new_assistant_message)
+
+                    try:
+                        translated_message = translate_text(assistant_reply, detected_audio_language)
+                        text_to_speech(translated_message, tts_output_path, detected_audio_language)
+                    except Exception as e:
+                        print("Translation error:", str(e))
+                        text_to_speech("Sorry, I couldn't answer that.", tts_output_path, "en-US")
+
                 except Exception as e:
-                    print("Translation error:", str(e))
-                    text_to_speech("Sorry, I couldn't answer that.", tts_output_path, "en-US")
+                    print("Model error:", str(e))
+                    #Reset the conversation to the default
+                    print("Resetting conversation...")
+                    conversation = system_prompt.copy()
 
                 # Delete the audio files
                 os.remove(audio_path)
