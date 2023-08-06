@@ -8,4 +8,4 @@ RPi.GPIO
 sounddevice
 soundfile
 tiktoken
-dotenv
+python-dotenv
