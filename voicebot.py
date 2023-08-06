@@ -156,16 +156,18 @@ system_prompt = [{
 }]
 temperature = 0.5
 max_tokens = 420
-model_name = "PALM"
+
+model_names = ["COHERE", "OPENAI", "PALM"]
+model_index = 0
+model_swap_interval = 3600
+last_model_swap_time = time.time()
+
 audio_path = "user_audio.wav"
 tts_output_path = "bot_response.mp3"
-# Define the encoding
+
 encoding = tiktoken.get_encoding("cl100k_base")
-# Define the maximum token count allowed
 max_token_count = 16000
-# Define the maximum length of time (in seconds) that the script will wait for a user input before resetting the conversation
 max_timeout = 600
-# Initialize the last activity time
 last_activity_time = time.time()
 
 # Set the initial conversation to the default system prompt
@@ -179,6 +181,16 @@ recording = False
 try:
     while True:
 
+        # Check if it's time to swap the model
+        if time.time() - last_model_swap_time > model_swap_interval:
+            # Increment the model index
+            model_index = (model_index + 1) % len(model_names)
+            # Update the last model swap time
+            last_model_swap_time = time.time()
+            # Get the current model name
+            model_name = model_names[model_index]
+            print("Swapped to model:", model_name)
+        
         # Check if it's time to reset the conversation based on token count or inactivity
         if len(encoding.encode(json.dumps(conversation))) > max_token_count or time.time() - last_activity_time > max_timeout:
             conversation = system_prompt.copy()  # Reset the conversation to the default
