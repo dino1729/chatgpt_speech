@@ -68,7 +68,8 @@ def transcribe_audio(audio_file):
 
     return translated_result, detectedSrcLang
 
-def text_to_speech(text, output_path, language):
+def text_to_speech(text, output_path, language, model_name):
+    
     speech_config = speechsdk.SpeechConfig(subscription=azurespeechkey, region=azurespeechregion)
     # Set the voice based on the language
     if language == "te-IN":
@@ -77,7 +78,15 @@ def text_to_speech(text, output_path, language):
         speech_config.speech_synthesis_voice_name = "hi-IN-SwaraNeural"
     else:
         # Use a default voice if the language is not specified or unsupported
-        speech_config.speech_synthesis_voice_name = "en-US-AriaNeural"
+        default_voice = "en-US-AriaNeural"
+        if model_name == "PALM":
+            speech_config.speech_synthesis_voice_name = "en-US-GuyNeural"
+        elif model_name == "OPENAI":
+            speech_config.speech_synthesis_voice_name = "en-US-AriaNeural"
+        elif model_name == "COHERE":
+            speech_config.speech_synthesis_voice_name = "en-US-SaraNeural"
+        else:
+            speech_config.speech_synthesis_voice_name = default_voice
     # Use the default speaker as audio output and start playing the audio
     speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config)
     #speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=None)
@@ -157,7 +166,7 @@ system_prompt = [{
 temperature = 0.5
 max_tokens = 420
 
-model_names = ["COHERE", "OPENAI", "PALM"]
+model_names = ["OPENAI", "COHERE", "PALM"]
 model_index = 0
 model_name = model_names[model_index]
 
@@ -225,10 +234,10 @@ try:
 
                     try:
                         translated_message = translate_text(assistant_reply, detected_audio_language)
-                        text_to_speech(translated_message, tts_output_path, detected_audio_language)
+                        text_to_speech(translated_message, tts_output_path, detected_audio_language, model_name)
                     except Exception as e:
                         print("Translation error:", str(e))
-                        text_to_speech("Sorry, I couldn't answer that.", tts_output_path, "en-US")
+                        text_to_speech("Sorry, I couldn't answer that.", tts_output_path, "en-US", model_name)
 
                 except Exception as e:
                     print("Model error:", str(e))
