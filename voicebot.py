@@ -160,6 +160,7 @@ max_tokens = 420
 model_names = ["COHERE", "OPENAI", "PALM"]
 model_index = 0
 model_swap_interval = 3600
+model_name = model_names[model_index]
 last_model_swap_time = time.time()
 
 audio_path = "user_audio.wav"
