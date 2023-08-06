@@ -156,7 +156,7 @@ system_prompt = [{
 }]
 temperature = 0.5
 max_tokens = 420
-model_name = "OPENAI"
+model_name = "PALM"
 audio_path = "user_audio.wav"
 tts_output_path = "bot_response.mp3"
 # Define the encoding

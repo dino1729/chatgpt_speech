@@ -117,7 +117,9 @@ def translate_text(text, target_language):
     return response[0]['translations'][0]['text']
 
 def generate_chat(model_name, conversation, temperature, max_tokens):
-    if model_name == "COHERE":
+    
+    model_name = model_name.upper()  # Convert model_name to uppercase
+    if "COHERE" in model_name:
         co = cohere.Client(cohere_api_key)
         response = co.generate(
             model='command-nightly',
@@ -126,7 +128,7 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
             max_tokens=max_tokens,
         )
         return response.generations[0].text
-    elif model_name == "PALM":
+    elif "PALM" in model_name:
         palm.configure(api_key=google_palm_api_key)
         response = palm.chat(
             model="models/chat-bison-001",
@@ -134,7 +136,7 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
             temperature=temperature,
         )
         return response.last
-    elif model_name == "OPENAI":
+    elif "OPENAI" in model_name:
         openai.api_type = "azure"
         openai.api_base = os.getenv("AZURE_API_BASE")
         openai.api_version = os.getenv("AZURE_CHATAPI_VERSION")
@@ -177,8 +179,11 @@ try:
             conversation = system_prompt.copy()  # Reset the conversation to the default
             print("Conversation reset.")
 
-        print("Speak in English/Telugu/Hindi: Press 'Enter' to start recording, and 'q' to stop and process the audio.")
-        input("Press 'Enter' and ask your question...")
+        print("Input model name: COHERE/PALM/OPENAI\n")
+        model_name = input()
+
+        print("Speak in English/Telugu/Hindi: Press 'Enter' to start recording, and 'q' to stop and process the audio.\n")
+        input("Press 'Enter' and ask your question...\n")
         
         # Update the last activity time
         last_activity_time = time.time()
