@@ -159,9 +159,7 @@ max_tokens = 420
 
 model_names = ["COHERE", "OPENAI", "PALM"]
 model_index = 0
-model_swap_interval = 3600
 model_name = model_names[model_index]
-last_model_swap_time = time.time()
 
 audio_path = "user_audio.wav"
 tts_output_path = "bot_response.mp3"
@@ -181,21 +179,16 @@ GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 recording = False
 try:
     while True:
-
-        # Check if it's time to swap the model
-        if time.time() - last_model_swap_time > model_swap_interval:
-            # Increment the model index
-            model_index = (model_index + 1) % len(model_names)
-            # Update the last model swap time
-            last_model_swap_time = time.time()
-            # Get the current model name
-            model_name = model_names[model_index]
-            print("Swapped to model:", model_name)
         
         # Check if it's time to reset the conversation based on token count or inactivity
         if len(encoding.encode(json.dumps(conversation))) > max_token_count or time.time() - last_activity_time > max_timeout:
             conversation = system_prompt.copy()  # Reset the conversation to the default
-            print("Conversation reset.")        
+            print("Conversation reset. Changing Model...") 
+            # Increment the model index
+            model_index = (model_index + 1) % len(model_names)
+            # Get the current model name
+            model_name = model_names[model_index]
+            print("Swapped to model:", model_name)       
 
         print("Press the button to start/stop recording...")
 
