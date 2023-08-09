@@ -80,9 +80,9 @@ def text_to_speech(text, output_path, language, model_name):
         # Use a default voice if the language is not specified or unsupported
         default_voice = "en-US-AriaNeural"
         if model_name == "PALM":
-            speech_config.speech_synthesis_voice_name = "en-US-GuyNeural"
+            speech_config.speech_synthesis_voice_name = "en-US-JaneNeural"
         elif model_name == "OPENAI":
-            speech_config.speech_synthesis_voice_name = "en-US-AriaNeural"
+            speech_config.speech_synthesis_voice_name = "en-US-AnaNeural"
         elif model_name == "COHERE":
             speech_config.speech_synthesis_voice_name = "en-US-SaraNeural"
         else:
@@ -166,7 +166,7 @@ system_prompt = [{
 temperature = 0.5
 max_tokens = 420
 
-model_names = ["OPENAI", "COHERE", "PALM"]
+model_names = ["PALM", "OPENAI", "COHERE"]
 model_index = 0
 model_name = model_names[model_index]
 
