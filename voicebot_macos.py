@@ -44,9 +44,21 @@ bing_api_key = os.getenv("BING_API_KEY")
 bing_endpoint = os.getenv("BING_ENDPOINT") + "/v7.0/search"
 bing_news_endpoint = os.getenv("BING_ENDPOINT") + "/v7.0/news/search"
 
+# Check for if the user wants gpt-3p5-turbo-16k or text-davinci-003 api for LLM
+LLM_NAME = "gpt-3p5-turbo-16k"
+
+if LLM_NAME == "text-davinci-003":
+    LLM_DEPLOYMENT_NAME = "text-davinci-003"
+    LLM_MODEL_NAME = "text-davinci-003"
+    openai.api_version = os.environ.get("AZURE_API_VERSION")
+elif LLM_NAME == "gpt-3p5-turbo-16k":
+    LLM_DEPLOYMENT_NAME = "gpt-3p5-turbo-16k"
+    LLM_MODEL_NAME = "gpt-35-turbo-16k"
+    openai.api_version = os.environ.get("AZURE_CHATAPI_VERSION")
+
 llm = AzureOpenAI(
     engine=LLM_DEPLOYMENT_NAME, 
-    model=LLM_DEPLOYMENT_NAME,
+    model=LLM_MODEL_NAME,
     openai_api_key=openai.api_key,
     openai_api_base=openai.api_base,
     openai_api_type=openai.api_type,
