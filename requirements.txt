@@ -9,3 +9,8 @@ sounddevice
 soundfile
 tiktoken
 python-dotenv
+googlesearch
+newspaper3k
+llama-index
+langchain
+

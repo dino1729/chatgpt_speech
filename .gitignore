@@ -1,3 +1,5 @@
 *.wav
 nohup.out
 .env
+test_scripts/data
+data/

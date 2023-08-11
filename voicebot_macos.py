@@ -15,7 +15,7 @@ import tiktoken
 import time
 import json
 import dotenv
-import RPi.GPIO as GPIO
+
 from bs4 import BeautifulSoup
 from newspaper import Article
 from llama_index import SimpleDirectoryReader, VectorStoreIndex, ListIndex, get_response_synthesizer, ServiceContext, set_global_service_context, LangchainEmbedding, Prompt
@@ -382,11 +382,7 @@ last_activity_time = time.time()
 
 # Set the initial conversation to the default system prompt
 conversation = system_prompt.copy()
-# Set up GPIO
-GPIO.setmode(GPIO.BCM)
-BUTTON_PIN = 23
-GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-
+print("Press the Enter key to start/stop recording...")
 recording = False
 try:
     while True:
@@ -401,15 +397,12 @@ try:
             model_name = model_names[model_index]
             print("Swapped to model:", model_name)       
 
-        print("Press the button to start/stop recording...")
-
         # Update the last activity time
         last_activity_time = time.time()
 
-        # Wait for the button press
-        GPIO.wait_for_edge(BUTTON_PIN, GPIO.RISING)
-        # Add a debounce delay
-        time.sleep(0.2)
+        # Wait for the Enter key press
+        input("Press 'Enter' and ask your question...\n")
+
         # Toggle the recording state
         recording = not recording
 
@@ -474,6 +467,3 @@ try:
 except KeyboardInterrupt:
     print("\nScript terminated by user.")
 
-finally:
-    # Clean up GPIO
-    GPIO.cleanup()
