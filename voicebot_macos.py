@@ -18,12 +18,24 @@ import dotenv
 
 from bs4 import BeautifulSoup
 from newspaper import Article
-from llama_index import SimpleDirectoryReader, VectorStoreIndex, ListIndex, get_response_synthesizer, ServiceContext, set_global_service_context, LangchainEmbedding, Prompt
-from llama_index.indices.postprocessor import SimilarityPostprocessor
-from llama_index.retrievers import VectorIndexRetriever
-from llama_index.llms import AzureOpenAI
 from langchain.embeddings import OpenAIEmbeddings
+from llama_index.llms import AzureOpenAI
+from llama_index import (
+    VectorStoreIndex,
+    ListIndex,
+    LangchainEmbedding,
+    PromptHelper,
+    Prompt,
+    SimpleDirectoryReader,
+    ServiceContext,
+    get_response_synthesizer,
+    set_global_service_context,
+)
+from llama_index.retrievers import VectorIndexRetriever
 from llama_index.query_engine import RetrieverQueryEngine
+from llama_index.indices.postprocessor import SimilarityPostprocessor
+from llama_index.text_splitter import SentenceSplitter
+from llama_index.node_parser import SimpleNodeParser
 
 # Get API keys from environment variables
 dotenv.load_dotenv()
@@ -35,7 +47,6 @@ azurespeechregion = os.environ.get("AZURE_SPEECH_REGION")
 azuretexttranslatorkey = os.environ.get("AZURE_TEXT_TRANSLATOR_KEY")
 os.environ["OPENAI_API_KEY"] = os.environ.get("AZURE_API_KEY")
 openai.api_type = "azure"
-openai.api_version = os.environ.get("AZURE_API_VERSION")
 openai.api_base = os.environ.get("AZURE_API_BASE")
 openai.api_key = os.environ.get("AZURE_API_KEY")
 LLM_DEPLOYMENT_NAME = "text-davinci-003"
@@ -44,17 +55,33 @@ bing_api_key = os.getenv("BING_API_KEY")
 bing_endpoint = os.getenv("BING_ENDPOINT") + "/v7.0/search"
 bing_news_endpoint = os.getenv("BING_ENDPOINT") + "/v7.0/news/search"
 
-# Check for if the user wants gpt-3p5-turbo-16k or text-davinci-003 api for LLM
-LLM_NAME = "gpt-3p5-turbo-16k"
+# max LLM token input size
+max_input_size = 4096
+num_output = 1024
+max_chunk_overlap_ratio = 0.1
+chunk_size = 512
+context_window = 4096
+prompt_helper = PromptHelper(max_input_size, num_output, max_chunk_overlap_ratio)
+text_splitter = SentenceSplitter(
+    separator=" ",
+    chunk_size=chunk_size,
+    chunk_overlap=20,
+    paragraph_separator="\n\n\n"
+)
+node_parser = SimpleNodeParser(text_splitter=text_splitter)
 
-if LLM_NAME == "text-davinci-003":
+# Check if user set the davinci model flag
+davincimodel_flag = False
+if davincimodel_flag:
     LLM_DEPLOYMENT_NAME = "text-davinci-003"
     LLM_MODEL_NAME = "text-davinci-003"
     openai.api_version = os.environ.get("AZURE_API_VERSION")
-elif LLM_NAME == "gpt-3p5-turbo-16k":
+    print("Using text-davinci-003 model.")
+else:
     LLM_DEPLOYMENT_NAME = "gpt-3p5-turbo-16k"
     LLM_MODEL_NAME = "gpt-35-turbo-16k"
     openai.api_version = os.environ.get("AZURE_CHATAPI_VERSION")
+    print("Using gpt-3p5-turbo-16k model.")
 
 llm = AzureOpenAI(
     engine=LLM_DEPLOYMENT_NAME, 
@@ -82,7 +109,10 @@ embedding_llm = LangchainEmbedding(
 service_context = ServiceContext.from_defaults(
     llm=llm,
     embed_model=embedding_llm,
-    chunk_size=512,
+    prompt_helper=prompt_helper,
+    chunk_size=chunk_size,
+    context_window=context_window,
+    node_parser=node_parser,
 )
 set_global_service_context(service_context)
 sum_template = (
@@ -90,23 +120,24 @@ sum_template = (
     "---------------------\n"
     "{context_str}"
     "\n---------------------\n"
-    "Based on the information provided, your task is to summarize the input context while effectively conveying the main points and relevant information. The summary should be presented in the style of a news reader, using your own words to accurately capture the essence of the content. It is important to refrain from directly copying word-for-word from the original context. Additionally, please ensure that the summary excludes any extraneous details such as discounts, promotions, sponsorships, or advertisements, and remains focused on the core message of the content.\n"
+    "Based on the context provided, your task is to summarize the input context while effectively conveying the main points and relevant information. The summary should be presented in a numbered list of at least 10 key points and takeaways, with a catchy headline at the top. It is important to refrain from directly copying word-for-word from the original context. Additionally, please ensure that the summary excludes any extraneous details such as discounts, promotions, sponsorships, or advertisements, and remains focused on the core message of the content.\n"
     "---------------------\n"
-    "{query_str}"
+    "Using both the context information and also using your own knowledge, "
+    "answer the question: {query_str}\n"
 )
 summary_template = Prompt(sum_template)
 
 ques_template = (
-    "You are a world-class personal assistant connected to the internet. You will be provided snippets of information from the internet based on user's query. Here is the context:\n"
+    "You are a world-class personal assistant. You will be provided snippets of information from the main context based on user's query. Here is the context:\n"
     "---------------------\n"
-    "{context_str}"
+    "{context_str}\n"
     "\n---------------------\n"
-    "Based on the information provided, your task is to answer the user's question to the best of your ability. You can use your own knowledge base to answer the question and only use the relavant information from the internet incase you don't have knowledge of the latest information to correctly answer user's question\n"
+    "Based on the context provided, your task is to answer the user's question to the best of your ability. It is important to refrain from directly copying word-for-word from the original context. Additionally, please ensure that the summary excludes any extraneous details such as discounts, promotions, sponsorships, or advertisements, and remains focused on the core message of the content.\n"
     "---------------------\n"
-    "{query_str}"
+    "Using both the context information and also using your own knowledge, "
+    "answer the question: {query_str}\n"
 )
 qa_template = Prompt(ques_template)
-
 OPENAI_COMPLETION_OPTIONS = {
     "temperature": 0.5,
     "max_tokens": 420,
