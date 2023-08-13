@@ -32,126 +32,17 @@ from llama_index.indices.postprocessor import SimilarityPostprocessor
 from llama_index.text_splitter import SentenceSplitter
 from llama_index.node_parser import SimpleNodeParser
 
-# Get API keys from environment variables
-dotenv.load_dotenv()
-cohere_api_key = os.environ["COHERE_API_KEY"]
-google_palm_api_key = os.environ["GOOGLE_PALM_API_KEY"]
-azure_api_key = os.environ["AZURE_API_KEY"]
-azurespeechkey = os.environ.get("AZURE_SPEECH_KEY")
-azurespeechregion = os.environ.get("AZURE_SPEECH_REGION")
-azuretexttranslatorkey = os.environ.get("AZURE_TEXT_TRANSLATOR_KEY")
-os.environ["OPENAI_API_KEY"] = os.environ.get("AZURE_API_KEY")
-openai.api_type = "azure"
-openai.api_base = os.environ.get("AZURE_API_BASE")
-openai.api_key = os.environ.get("AZURE_API_KEY")
-LLM_DEPLOYMENT_NAME = "text-davinci-003"
-EMBEDDINGS_DEPLOYMENT_NAME = "text-embedding-ada-002"
-bing_api_key = os.getenv("BING_API_KEY")
-bing_endpoint = os.getenv("BING_ENDPOINT") + "/v7.0/search"
-bing_news_endpoint = os.getenv("BING_ENDPOINT") + "/v7.0/news/search"
+def clearallfiles():
+    # Ensure the UPLOAD_FOLDER is empty
+    for root, dirs, files in os.walk(UPLOAD_FOLDER):
+        for file in files:
+            file_path = os.path.join(root, file)
+            os.remove(file_path)
 
-# max LLM token input size
-max_input_size = 4096
-num_output = 1024
-max_chunk_overlap_ratio = 0.1
-chunk_size = 512
-context_window = 4096
-prompt_helper = PromptHelper(max_input_size, num_output, max_chunk_overlap_ratio)
-text_splitter = SentenceSplitter(
-    separator=" ",
-    chunk_size=chunk_size,
-    chunk_overlap=20,
-    paragraph_separator="\n\n\n"
-)
-node_parser = SimpleNodeParser(text_splitter=text_splitter)
-
-# Check if user set the davinci model flag
-davincimodel_flag = False
-if davincimodel_flag:
-    LLM_DEPLOYMENT_NAME = "text-davinci-003"
-    LLM_MODEL_NAME = "text-davinci-003"
-    openai.api_version = os.environ.get("AZURE_API_VERSION")
-    print("Using text-davinci-003 model.")
-else:
-    LLM_DEPLOYMENT_NAME = "gpt-3p5-turbo-16k"
-    LLM_MODEL_NAME = "gpt-35-turbo-16k"
-    openai.api_version = os.environ.get("AZURE_CHATAPI_VERSION")
-    print("Using gpt-3p5-turbo-16k model.")
-
-llm = AzureOpenAI(
-    engine=LLM_DEPLOYMENT_NAME, 
-    model=LLM_MODEL_NAME,
-    openai_api_key=openai.api_key,
-    openai_api_base=openai.api_base,
-    openai_api_type=openai.api_type,
-    openai_api_version=openai.api_version,
-    temperature=0.5,
-    max_tokens=1024,
-)
-embedding_llm = LangchainEmbedding(
-    OpenAIEmbeddings(
-        model=EMBEDDINGS_DEPLOYMENT_NAME,
-        deployment=EMBEDDINGS_DEPLOYMENT_NAME,
-        openai_api_key=openai.api_key,
-        openai_api_base=openai.api_base,
-        openai_api_type=openai.api_type,
-        openai_api_version=openai.api_version,
-        chunk_size=32,
-        max_retries=3,
-    ),
-    embed_batch_size=1,
-)
-service_context = ServiceContext.from_defaults(
-    llm=llm,
-    embed_model=embedding_llm,
-    prompt_helper=prompt_helper,
-    chunk_size=chunk_size,
-    context_window=context_window,
-    node_parser=node_parser,
-)
-set_global_service_context(service_context)
-sum_template = (
-    "You are a world-class text summarizer. We have provided context information below. \n"
-    "---------------------\n"
-    "{context_str}"
-    "\n---------------------\n"
-    "Based on the context provided, your task is to summarize the input context while effectively conveying the main points and relevant information. The summary should be presented in the format of news headlines. It is important to refrain from directly copying word-for-word from the original context. Additionally, please ensure that the summary excludes any extraneous details such as discounts, promotions, sponsorships, or advertisements, and remains focused on the core message of the content.\n"
-    "---------------------\n"
-    "Using both the context information and also using your own knowledge, "
-    "answer the question: {query_str}\n"
-)
-summary_template = Prompt(sum_template)
-
-ques_template = (
-    "You are a world-class personal assistant. You will be provided snippets of information from the main context based on user's query. Here is the context:\n"
-    "---------------------\n"
-    "{context_str}\n"
-    "\n---------------------\n"
-    "Based on the context provided, your task is to answer the user's question to the best of your ability. It is important to refrain from directly copying word-for-word from the original context. Additionally, please ensure that the summary excludes any extraneous details such as discounts, promotions, sponsorships, or advertisements, and remains focused on the core message of the content.\n"
-    "---------------------\n"
-    "Using both the context information and also using your own knowledge, "
-    "answer the question: {query_str}\n"
-)
-qa_template = Prompt(ques_template)
-OPENAI_COMPLETION_OPTIONS = {
-    "temperature": 0.5,
-    "max_tokens": 420,
-    "top_p": 1,
-    "frequency_penalty": 0,
-    "presence_penalty": 0
-}
-
-'''
-This script transcribes the native audio file to english language, sends this english text to GPT-3 for completion, and then translates the completed english text back to the native language and generates the audio response.
-'''
-
-def save_to_file(text, filename):
-    # Create the data folder if it doesn't exist
-    if not os.path.exists('./data'):
-        os.makedirs('./data')
+def saveextractedtext_to_file(text, filename):
 
     # Save the output to the article.txt file
-    file_path = os.path.join('./data', filename)
+    file_path = os.path.join(UPLOAD_FOLDER, filename)
     with open(file_path, 'w') as file:
         file.write(text)
 
@@ -183,6 +74,7 @@ def text_extractor(url):
 
 def get_bing_results(query, num=10):
 
+    clearallfiles()
     # Construct a request
     mkt = 'en-US'
     params = { 'q': query, 'mkt': mkt, 'count': num, 'responseFilter': ['Webpages','News'] }
@@ -199,7 +91,7 @@ def get_bing_results(query, num=10):
     output += combined_snippets
 
     # Save the output to a file
-    save_to_file(output, "bing_results.txt")
+    saveextractedtext_to_file(output, "bing_results.txt")
     # Query the results using llama-index
     answer = str(simple_query("./data", query)).strip()
 
@@ -207,6 +99,7 @@ def get_bing_results(query, num=10):
 
 def get_bing_news_results(query, num=5):
 
+    clearallfiles()
     # Construct a request
     mkt = 'en-US'
     params = { 'q': query, 'mkt': mkt, 'freshness': 'Day', 'count': num }
@@ -231,11 +124,11 @@ def get_bing_news_results(query, num=5):
     output += combined_output
 
     # Save the output to a file
-    save_to_file(output, "bing_results.txt")
+    saveextractedtext_to_file(output, "bing_results.txt")
     # Summarize the bing search response
-    summary = str(summarize("./data")).strip()
+    bingsummary = str(summarize("./data")).strip()
 
-    return summary
+    return bingsummary
 
 def summarize(data_folder):
     
@@ -410,6 +303,119 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
     else:
         return "Invalid model name"
 
+# Get API keys from environment variables
+dotenv.load_dotenv()
+cohere_api_key = os.environ["COHERE_API_KEY"]
+google_palm_api_key = os.environ["GOOGLE_PALM_API_KEY"]
+azure_api_key = os.environ["AZURE_API_KEY"]
+azurespeechkey = os.environ.get("AZURE_SPEECH_KEY")
+azurespeechregion = os.environ.get("AZURE_SPEECH_REGION")
+azuretexttranslatorkey = os.environ.get("AZURE_TEXT_TRANSLATOR_KEY")
+os.environ["OPENAI_API_KEY"] = os.environ.get("AZURE_API_KEY")
+openai.api_type = "azure"
+openai.api_base = os.environ.get("AZURE_API_BASE")
+openai.api_key = os.environ.get("AZURE_API_KEY")
+LLM_DEPLOYMENT_NAME = "text-davinci-003"
+EMBEDDINGS_DEPLOYMENT_NAME = "text-embedding-ada-002"
+bing_api_key = os.getenv("BING_API_KEY")
+bing_endpoint = os.getenv("BING_ENDPOINT") + "/v7.0/search"
+bing_news_endpoint = os.getenv("BING_ENDPOINT") + "/v7.0/news/search"
+
+# max LLM token input size
+max_input_size = 4096
+num_output = 1024
+max_chunk_overlap_ratio = 0.1
+chunk_size = 512
+context_window = 4096
+prompt_helper = PromptHelper(max_input_size, num_output, max_chunk_overlap_ratio)
+text_splitter = SentenceSplitter(
+    separator=" ",
+    chunk_size=chunk_size,
+    chunk_overlap=20,
+    paragraph_separator="\n\n\n"
+)
+node_parser = SimpleNodeParser(text_splitter=text_splitter)
+
+# Check if user set the davinci model flag
+davincimodel_flag = False
+if davincimodel_flag:
+    LLM_DEPLOYMENT_NAME = "text-davinci-003"
+    LLM_MODEL_NAME = "text-davinci-003"
+    openai.api_version = os.environ.get("AZURE_API_VERSION")
+    print("Using text-davinci-003 model.")
+else:
+    LLM_DEPLOYMENT_NAME = "gpt-3p5-turbo-16k"
+    LLM_MODEL_NAME = "gpt-35-turbo-16k"
+    openai.api_version = os.environ.get("AZURE_CHATAPI_VERSION")
+    print("Using gpt-3p5-turbo-16k model.")
+
+llm = AzureOpenAI(
+    engine=LLM_DEPLOYMENT_NAME, 
+    model=LLM_MODEL_NAME,
+    openai_api_key=openai.api_key,
+    openai_api_base=openai.api_base,
+    openai_api_type=openai.api_type,
+    openai_api_version=openai.api_version,
+    temperature=0.5,
+    max_tokens=1024,
+)
+embedding_llm = LangchainEmbedding(
+    OpenAIEmbeddings(
+        model=EMBEDDINGS_DEPLOYMENT_NAME,
+        deployment=EMBEDDINGS_DEPLOYMENT_NAME,
+        openai_api_key=openai.api_key,
+        openai_api_base=openai.api_base,
+        openai_api_type=openai.api_type,
+        openai_api_version=openai.api_version,
+        chunk_size=32,
+        max_retries=3,
+    ),
+    embed_batch_size=1,
+)
+service_context = ServiceContext.from_defaults(
+    llm=llm,
+    embed_model=embedding_llm,
+    prompt_helper=prompt_helper,
+    chunk_size=chunk_size,
+    context_window=context_window,
+    node_parser=node_parser,
+)
+set_global_service_context(service_context)
+sum_template = (
+    "You are a world-class text summarizer. We have provided context information below. \n"
+    "---------------------\n"
+    "{context_str}"
+    "\n---------------------\n"
+    "Based on the context provided, your task is to summarize the input context while effectively conveying the main points and relevant information. The summary should be presented in the format of news headlines. It is important to refrain from directly copying word-for-word from the original context. Additionally, please ensure that the summary excludes any extraneous details such as discounts, promotions, sponsorships, or advertisements, and remains focused on the core message of the content.\n"
+    "---------------------\n"
+    "Using both the context information and also using your own knowledge, "
+    "answer the question: {query_str}\n"
+)
+summary_template = Prompt(sum_template)
+
+ques_template = (
+    "You are a world-class personal assistant. You will be provided snippets of information from the main context based on user's query. Here is the context:\n"
+    "---------------------\n"
+    "{context_str}\n"
+    "\n---------------------\n"
+    "Based on the context provided, your task is to answer the user's question to the best of your ability. It is important to refrain from directly copying word-for-word from the original context. Additionally, please ensure that the summary excludes any extraneous details such as discounts, promotions, sponsorships, or advertisements, and remains focused on the core message of the content.\n"
+    "---------------------\n"
+    "Using both the context information and also using your own knowledge, "
+    "answer the question: {query_str}\n"
+)
+qa_template = Prompt(ques_template)
+OPENAI_COMPLETION_OPTIONS = {
+    "temperature": 0.5,
+    "max_tokens": 420,
+    "top_p": 1,
+    "frequency_penalty": 0,
+    "presence_penalty": 0
+}
+
+'''
+This script transcribes the native audio file to english language, sends this english text to GPT-3 for completion, and then translates the completed english text back to the native language and generates the audio response.
+'''
+
 system_prompt = [{
     "role": "system",
     "content": "You are a helpful and super-intelligent voice assistant, that accurately answers user queries. Be accurate, helpful, concise, and clear."
@@ -420,6 +426,10 @@ max_tokens = 420
 model_names = ["PALM", "OPENAI", "COHERE"]
 model_index = 0
 model_name = model_names[model_index]
+
+UPLOAD_FOLDER = os.path.join(".", "data")
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
 
 # Define a list of keywords that trigger Bing search
 keywords = ["latest", "current", "recent", "update", "best", "top", "news", "weather", "summary", "previous"]
