@@ -1,13 +1,8 @@
-from hmac import new
 import os
-from pyexpat import model
-from re import T
-import re
 import openai
 import azure.cognitiveservices.speech as speechsdk
 import cohere
 import google.generativeai as palm
-from regex import D
 import sounddevice as sd
 import soundfile as sf
 import requests, uuid
