@@ -160,7 +160,7 @@ def save_to_file(text, filename):
 
     return f"Text saved to {file_path}"
 
-def download_art(url):
+def text_extractor(url):
 
     if url:
         # Extract the article
@@ -220,7 +220,7 @@ def get_bing_news_results(query, num=5):
 
     # Extract text from the urls and append them into a single text variable
     all_urls = [result['url'] for result in response_data['value']]
-    all_snippets = [download_art(url) for url in all_urls]
+    all_snippets = [text_extractor(url) for url in all_urls]
 
     # Combine snippets with titles and article names
     combined_output = ""

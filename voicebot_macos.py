@@ -157,7 +157,7 @@ def save_to_file(text, filename):
 
     return f"Text saved to {file_path}"
 
-def download_art(url):
+def text_extractor(url):
 
     if url:
         # Extract the article
@@ -217,7 +217,7 @@ def get_bing_news_results(query, num=5):
 
     # Extract text from the urls and append them into a single text variable
     all_urls = [result['url'] for result in response_data['value']]
-    all_snippets = [download_art(url) for url in all_urls]
+    all_snippets = [text_extractor(url) for url in all_urls]
 
     # Combine snippets with titles and article names
     combined_output = ""
@@ -238,30 +238,44 @@ def get_bing_news_results(query, num=5):
     return summary
 
 def summarize(data_folder):
+    
     # Initialize a document
     documents = SimpleDirectoryReader(data_folder).load_data()
     #index = VectorStoreIndex.from_documents(documents)
-    index = ListIndex.from_documents(documents)
+    list_index = ListIndex.from_documents(documents)
     # ListIndexRetriever
-    retriever = index.as_retriever(retriever_mode='default')
-    # tree summarize
-    query_engine = RetrieverQueryEngine.from_args(retriever, response_mode='tree_summarize', text_qa_template=summary_template)
+    retriever = list_index.as_retriever(
+        retriever_mode='default',
+    )
+    # configure response synthesizer
+    response_synthesizer = get_response_synthesizer(
+        response_mode="tree_summarize",
+        text_qa_template=summary_template,
+    )
+    # assemble query engine
+    query_engine = RetrieverQueryEngine(
+        retriever=retriever,
+        response_synthesizer=response_synthesizer,
+    )
     response = query_engine.query("Generate a summary of the input context. Be as verbose as possible, while keeping the summary concise and to the point.")
 
     return response
 
 def simple_query(data_folder, query):
+    
     # Initialize a document
     documents = SimpleDirectoryReader(data_folder).load_data()
     #index = VectorStoreIndex.from_documents(documents)
-    index = VectorStoreIndex.from_documents(documents)
+    vector_index = VectorStoreIndex.from_documents(documents)
     # configure retriever
     retriever = VectorIndexRetriever(
-        index=index,
-        similarity_top_k=5,
+        index=vector_index,
+        similarity_top_k=6,
     )
     # # configure response synthesizer
-    response_synthesizer = get_response_synthesizer(text_qa_template=qa_template)
+    response_synthesizer = get_response_synthesizer(
+        text_qa_template=qa_template,
+    )
     # # assemble query engine
     query_engine = RetrieverQueryEngine(
         retriever=retriever,
@@ -269,7 +283,7 @@ def simple_query(data_folder, query):
         node_postprocessors=[
             SimilarityPostprocessor(similarity_cutoff=0.7)
         ],
-        )
+    )
     response = query_engine.query(query)
 
     return response
