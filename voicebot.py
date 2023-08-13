@@ -117,7 +117,7 @@ sum_template = (
     "---------------------\n"
     "{context_str}"
     "\n---------------------\n"
-    "Based on the context provided, your task is to summarize the input context while effectively conveying the main points and relevant information. The summary should be presented in a numbered list of at least 10 key points and takeaways, with a catchy headline at the top. It is important to refrain from directly copying word-for-word from the original context. Additionally, please ensure that the summary excludes any extraneous details such as discounts, promotions, sponsorships, or advertisements, and remains focused on the core message of the content.\n"
+    "Based on the context provided, your task is to summarize the input context while effectively conveying the main points and relevant information. The summary should be presented in the format of news headlines. It is important to refrain from directly copying word-for-word from the original context. Additionally, please ensure that the summary excludes any extraneous details such as discounts, promotions, sponsorships, or advertisements, and remains focused on the core message of the content.\n"
     "---------------------\n"
     "Using both the context information and also using your own knowledge, "
     "answer the question: {query_str}\n"
