@@ -297,7 +297,11 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
         response = openai.ChatCompletion.create(
             engine="gpt-3p5-turbo-16k",
             messages=conversation,
-            **OPENAI_COMPLETION_OPTIONS,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            top_p=1,
+            frequency_penalty=0,
+            presence_penalty=0
         )
         return response['choices'][0]['message']['content']
     else:
@@ -404,13 +408,6 @@ ques_template = (
     "answer the question: {query_str}\n"
 )
 qa_template = Prompt(ques_template)
-OPENAI_COMPLETION_OPTIONS = {
-    "temperature": 0.5,
-    "max_tokens": 420,
-    "top_p": 1,
-    "frequency_penalty": 0,
-    "presence_penalty": 0
-}
 
 '''
 This script transcribes the native audio file to english language, sends this english text to GPT-3 for completion, and then translates the completed english text back to the native language and generates the audio response.
