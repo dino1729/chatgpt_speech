@@ -21,6 +21,15 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
             max_tokens=max_tokens,
         )
         return response.generations[0].text
+    if model_name == "cohere_chat":
+        co = cohere.Client(cohere_api_key)
+        response = co.chat(
+            model='ccommand-nightly',
+            message=str(conversation).replace("'", '"'),
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        return response.text
     elif model_name == "palm":
         palm.configure(api_key=google_palm_api_key)
         response = palm.chat(
@@ -46,11 +55,11 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
 
 system_prompt = [{
     "role": "system",
-    "content": "You are a helpful and super-intelligent assistant, that accurately answers user queries. Be accurate, helpful, concise, and clear."
+    "content": "My name is Dino. You are a helpful and super-intelligent assistant, that accurately answers my queries. Be accurate, helpful, concise, and clear."
 }]
 
-temperature = 0
-max_tokens = 800
+temperature = 0.5
+max_tokens = 105
 # Set the initial conversation to the default system prompt
 conversation = system_prompt.copy()
 try:
@@ -60,7 +69,7 @@ try:
         new_message = {"role": "user", "content": user_text}
         conversation.append(new_message)
 
-        model_name = input("\nEnter the model name (cohere/palm/openai): ")
+        model_name = input("\nEnter the model name (cohere/cohere_chat/palm/openai): ")
         
         try:
             assistant_reply = generate_chat(model_name, conversation, temperature, max_tokens)
