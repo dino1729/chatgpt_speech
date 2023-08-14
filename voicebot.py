@@ -386,25 +386,25 @@ service_context = ServiceContext.from_defaults(
 )
 set_global_service_context(service_context)
 sum_template = (
-    "You are a world-class text summarizer. We have provided context information below. \n"
+    "You are a world-class text summarizer connected to the internet. We have provided context information below from the internet below. \n"
     "---------------------\n"
     "{context_str}"
     "\n---------------------\n"
     "Based on the context provided, your task is to summarize the input context while effectively conveying the main points and relevant information. The summary should be presented in the format of news headlines. It is important to refrain from directly copying word-for-word from the original context. Additionally, please ensure that the summary excludes any extraneous details such as discounts, promotions, sponsorships, or advertisements, and remains focused on the core message of the content.\n"
     "---------------------\n"
-    "Using both the context information and also using your own knowledge, "
+    "Using both the latest context information and also using your own knowledge, "
     "answer the question: {query_str}\n"
 )
 summary_template = Prompt(sum_template)
 
 ques_template = (
-    "You are a world-class personal assistant. You will be provided snippets of information from the main context based on user's query. Here is the context:\n"
+    "You are a world-class personal assistant connected to the internet. You will be provided snippets of information from the internet based on user's query. Here is the context:\n"
     "---------------------\n"
     "{context_str}\n"
     "\n---------------------\n"
     "Based on the context provided, your task is to answer the user's question to the best of your ability. It is important to refrain from directly copying word-for-word from the original context. Additionally, please ensure that the summary excludes any extraneous details such as discounts, promotions, sponsorships, or advertisements, and remains focused on the core message of the content.\n"
     "---------------------\n"
-    "Using both the context information and also using your own knowledge, "
+    "Using both the latest context information and also using your own knowledge, "
     "answer the question: {query_str}\n"
 )
 qa_template = Prompt(ques_template)
