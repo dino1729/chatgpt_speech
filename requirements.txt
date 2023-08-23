@@ -12,5 +12,4 @@ python-dotenv
 googlesearch
 newspaper3k
 llama-index==0.7.24.post1
-langchain
-
+langchain==0.0.263
