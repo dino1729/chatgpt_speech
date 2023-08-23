@@ -229,6 +229,12 @@ def text_to_speech(text, output_path, language, model_name):
             speech_config.speech_synthesis_voice_name = "en-US-SaraNeural"
         elif model_name == "BING+OPENAI":
             speech_config.speech_synthesis_voice_name = "en-US-JennyNeural"
+        elif model_name == "LLAMA2":
+            speech_config.speech_synthesis_voice_name = "en-US-AmberNeural"
+        elif model_name == "GPT4ALL":
+            speech_config.speech_synthesis_voice_name = "en-US-AshleyNeural"
+        elif model_name == "WIZARDLM":
+            speech_config.speech_synthesis_voice_name = "en-US-CoraNeural"
         else:
             speech_config.speech_synthesis_voice_name = default_voice
     # Use the default speaker as audio output and start playing the audio
@@ -302,6 +308,36 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
             top_p=1,
             frequency_penalty=0,
             presence_penalty=0
+        )
+        return response['choices'][0]['message']['content']
+    elif model_name == "LLAMA2":
+        openai.api_type = "open_ai"
+        openai.api_base = os.getenv("LLAMA2_API_BASE")
+        response = openai.ChatCompletion.create(
+            model="llama2-7bchat-m",
+            messages=conversation,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        return response['choices'][0]['message']['content']
+    elif model_name == "GPT4ALL":
+        openai.api_type = "open_ai"
+        openai.api_base = os.getenv("LLAMA2_API_BASE")
+        response = openai.ChatCompletion.create(
+            model="ggml-gpt4all-j",
+            messages=conversation,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        return response['choices'][0]['message']['content']
+    elif model_name == "WIZARDLM":
+        openai.api_type = "open_ai"
+        openai.api_base = os.getenv("LLAMA2_API_BASE")
+        response = openai.ChatCompletion.create(
+            model="wizardlm-7b-8k-m",
+            messages=conversation,
+            temperature=temperature,
+            max_tokens=max_tokens,
         )
         return response['choices'][0]['message']['content']
     else:
@@ -420,7 +456,9 @@ system_prompt = [{
 temperature = 0.5
 max_tokens = 420
 
-model_names = ["PALM", "OPENAI", "COHERE"]
+# model_names = ["PALM", "OPENAI", "COHERE", "LLAMA2", "GPT4ALL", "WIZARDLM"]
+# Currently LLAMA2 and GPT4ALL are slow to respond. Will update this later
+model_names = ["PALM", "OPENAI", "COHERE", "WIZARDLM"]
 model_index = 0
 model_name = model_names[model_index]
 
@@ -435,7 +473,7 @@ audio_path = "user_audio.wav"
 tts_output_path = "bot_response.mp3"
 
 encoding = tiktoken.get_encoding("cl100k_base")
-max_token_count = 16000
+max_token_count = 8192
 max_timeout = 600
 last_activity_time = time.time()
 

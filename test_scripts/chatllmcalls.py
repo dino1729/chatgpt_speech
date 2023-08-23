@@ -53,7 +53,27 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
         openai.api_type = "open_ai"
         openai.api_base = os.getenv("LLAMA2_API_BASE")
         response = openai.ChatCompletion.create(
+            model="llama2-7bchat-m",
+            messages=conversation,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        return response['choices'][0]['message']['content']
+    elif model_name == "gpt4all":
+        openai.api_type = "open_ai"
+        openai.api_base = os.getenv("LLAMA2_API_BASE")
+        response = openai.ChatCompletion.create(
             model="ggml-gpt4all-j",
+            messages=conversation,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        return response['choices'][0]['message']['content']
+    elif model_name == "wizardlm":
+        openai.api_type = "open_ai"
+        openai.api_base = os.getenv("LLAMA2_API_BASE")
+        response = openai.ChatCompletion.create(
+            model="wizardlm-7b-8k-m",
             messages=conversation,
             temperature=temperature,
             max_tokens=max_tokens,
@@ -78,7 +98,7 @@ try:
         new_message = {"role": "user", "content": user_text}
         conversation.append(new_message)
 
-        model_name = input("\nEnter the model name (cohere/cohere_chat/palm/openai/llama2): ")
+        model_name = input("\nEnter the model name (cohere/cohere_chat/palm/openai/llama2/gpt4all/wizardlm): ")
         
         try:
             assistant_reply = generate_chat(model_name, conversation, temperature, max_tokens)
