@@ -10,7 +10,6 @@ cohere_api_key = os.environ["COHERE_API_KEY"]
 google_palm_api_key = os.environ["GOOGLE_PALM_API_KEY"]
 azure_api_key = os.environ["AZURE_API_KEY"]
 
-
 def generate_chat(model_name, conversation, temperature, max_tokens):
     if model_name == "cohere":
         co = cohere.Client(cohere_api_key)
@@ -50,6 +49,16 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
             max_tokens=max_tokens,
         )
         return response['choices'][0]['message']['content']
+    elif model_name == "llama2":
+        openai.api_type = "open_ai"
+        openai.api_base = os.getenv("LLAMA2_API_BASE")
+        response = openai.ChatCompletion.create(
+            model="ggml-gpt4all-j",
+            messages=conversation,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        return response['choices'][0]['message']['content']
     else:
         return "Invalid model name"
 
@@ -69,7 +78,7 @@ try:
         new_message = {"role": "user", "content": user_text}
         conversation.append(new_message)
 
-        model_name = input("\nEnter the model name (cohere/cohere_chat/palm/openai): ")
+        model_name = input("\nEnter the model name (cohere/cohere_chat/palm/openai/llama2): ")
         
         try:
             assistant_reply = generate_chat(model_name, conversation, temperature, max_tokens)
