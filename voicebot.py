@@ -132,6 +132,8 @@ def get_bing_news_results(query, num=5):
 
 def summarize(data_folder):
     
+    # Set service context
+    set_global_service_context(service_context)    
     # Initialize a document
     documents = SimpleDirectoryReader(data_folder).load_data()
     #index = VectorStoreIndex.from_documents(documents)
@@ -156,6 +158,8 @@ def summarize(data_folder):
 
 def simple_query(data_folder, query):
     
+    # Set service context
+    set_global_service_context(service_context)    
     # Initialize a document
     documents = SimpleDirectoryReader(data_folder).load_data()
     #index = VectorStoreIndex.from_documents(documents)
