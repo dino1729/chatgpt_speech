@@ -186,6 +186,7 @@ def simple_query(data_folder, query):
     return response
 
 def transcribe_audio(audio_file):
+    
     # Create an instance of a speech config with your subscription key and region
     # Currently the v2 endpoint is required. In a future SDK release you won't need to set it. 
     endpoint_string = "wss://{}.stt.speech.microsoft.com/speech/universal/v2".format(azurespeechregion)
@@ -282,6 +283,7 @@ def translate_text(text, target_language):
     return response[0]['translations'][0]['text']
 
 def generate_chat(model_name, conversation, temperature, max_tokens):
+    
     if model_name == "COHERE":
         co = cohere.Client(cohere_api_key)
         response = co.generate(
@@ -300,9 +302,9 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
         )
         return response.last
     elif model_name == "OPENAI":
-        openai.api_type = "azure"
-        openai.api_base = os.getenv("AZURE_API_BASE")
-        openai.api_version = os.getenv("AZURE_CHATAPI_VERSION")
+        openai.api_type = azure_api_type
+        openai.api_base = azure_api_base
+        openai.api_version = azure_chatapi_version
         openai.api_key = azure_api_key
         response = openai.ChatCompletion.create(
             engine="gpt-3p5-turbo-16k",
@@ -315,8 +317,8 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
         )
         return response['choices'][0]['message']['content']
     elif model_name == "LLAMA2":
-        openai.api_type = "open_ai"
-        openai.api_base = os.getenv("LLAMA2_API_BASE")
+        openai.api_type = llama2_api_type
+        openai.api_base = llama2_api_base
         response = openai.ChatCompletion.create(
             model="llama2-7bchat-m",
             messages=conversation,
@@ -325,8 +327,8 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
         )
         return response['choices'][0]['message']['content']
     elif model_name == "GPT4ALL":
-        openai.api_type = "open_ai"
-        openai.api_base = os.getenv("LLAMA2_API_BASE")
+        openai.api_type = llama2_api_type
+        openai.api_base = llama2_api_base
         response = openai.ChatCompletion.create(
             model="ggml-gpt4all-j",
             messages=conversation,
@@ -335,8 +337,8 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
         )
         return response['choices'][0]['message']['content']
     elif model_name == "WIZARDLM":
-        openai.api_type = "open_ai"
-        openai.api_base = os.getenv("LLAMA2_API_BASE")
+        openai.api_type = llama2_api_type
+        openai.api_base = llama2_api_base
         response = openai.ChatCompletion.create(
             model="wizardlm-7b-8k-m",
             messages=conversation,
@@ -351,16 +353,23 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
 dotenv.load_dotenv()
 cohere_api_key = os.environ["COHERE_API_KEY"]
 google_palm_api_key = os.environ["GOOGLE_PALM_API_KEY"]
+
 azure_api_key = os.environ["AZURE_API_KEY"]
+azure_api_type = "azure"
+azure_api_base = os.environ.get("AZURE_API_BASE")
+azure_api_version = os.environ.get("AZURE_API_VERSION")
+azure_chatapi_version = os.environ.get("AZURE_CHATAPI_VERSION")
+
 azurespeechkey = os.environ.get("AZURE_SPEECH_KEY")
 azurespeechregion = os.environ.get("AZURE_SPEECH_REGION")
 azuretexttranslatorkey = os.environ.get("AZURE_TEXT_TRANSLATOR_KEY")
-os.environ["OPENAI_API_KEY"] = os.environ.get("AZURE_API_KEY")
-openai.api_type = "azure"
-openai.api_base = os.environ.get("AZURE_API_BASE")
-openai.api_key = os.environ.get("AZURE_API_KEY")
+
 LLM_DEPLOYMENT_NAME = "text-davinci-003"
 EMBEDDINGS_DEPLOYMENT_NAME = "text-embedding-ada-002"
+
+llama2_api_type = "open_ai"
+llama2_api_base = os.environ.get("LLAMA2_API_BASE")
+
 bing_api_key = os.getenv("BING_API_KEY")
 bing_endpoint = os.getenv("BING_ENDPOINT") + "/v7.0/search"
 bing_news_endpoint = os.getenv("BING_ENDPOINT") + "/v7.0/news/search"
@@ -380,26 +389,34 @@ text_splitter = SentenceSplitter(
 )
 node_parser = SimpleNodeParser(text_splitter=text_splitter)
 
+os.environ["OPENAI_API_KEY"] = azure_api_key
+openai.api_type = azure_api_type
+openai.api_base = azure_api_base
+openai.api_key = azure_api_key
+
 # Check if user set the davinci model flag
 davincimodel_flag = False
 if davincimodel_flag:
     LLM_DEPLOYMENT_NAME = "text-davinci-003"
     LLM_MODEL_NAME = "text-davinci-003"
-    openai.api_version = os.environ.get("AZURE_API_VERSION")
+    openai.api_version = azure_api_version
+    max_input_size = 4096
+    context_window = 4096
     print("Using text-davinci-003 model.")
 else:
     LLM_DEPLOYMENT_NAME = "gpt-3p5-turbo-16k"
     LLM_MODEL_NAME = "gpt-35-turbo-16k"
-    openai.api_version = os.environ.get("AZURE_CHATAPI_VERSION")
+    openai.api_version = azure_chatapi_version
+    max_input_size = 16384
+    context_window = 16384
     print("Using gpt-3p5-turbo-16k model.")
 
 llm = AzureOpenAI(
     engine=LLM_DEPLOYMENT_NAME, 
     model=LLM_MODEL_NAME,
-    openai_api_key=openai.api_key,
-    openai_api_base=openai.api_base,
-    openai_api_type=openai.api_type,
-    openai_api_version=openai.api_version,
+    openai_api_key=azure_api_key,
+    openai_api_base=azure_api_base,
+    openai_api_type=azure_api_type,
     temperature=0.5,
     max_tokens=1024,
 )
@@ -407,10 +424,10 @@ embedding_llm = LangchainEmbedding(
     OpenAIEmbeddings(
         model=EMBEDDINGS_DEPLOYMENT_NAME,
         deployment=EMBEDDINGS_DEPLOYMENT_NAME,
-        openai_api_key=openai.api_key,
-        openai_api_base=openai.api_base,
-        openai_api_type=openai.api_type,
-        openai_api_version=openai.api_version,
+        openai_api_key=azure_api_key,
+        openai_api_base=azure_api_base,
+        openai_api_type=azure_api_key,
+        openai_api_version=azure_api_version,
         chunk_size=32,
         max_retries=3,
     ),
