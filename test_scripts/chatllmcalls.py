@@ -53,7 +53,7 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
         openai.api_type = "open_ai"
         openai.api_base = os.getenv("LLAMA2_API_BASE")
         response = openai.ChatCompletion.create(
-            model="llama2-7bchat-m",
+            model="llama2-7bchat",
             messages=conversation,
             temperature=temperature,
             max_tokens=max_tokens,
