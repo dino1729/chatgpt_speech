@@ -480,8 +480,8 @@ temperature = 0.5
 max_tokens = 420
 
 # model_names = ["PALM", "OPENAI", "COHERE", "LLAMA2", "GPT4ALL", "WIZARDLM"]
-# Currently LLAMA2 and GPT4ALL are slow to respond. Will update this later
-model_names = ["PALM", "OPENAI", "COHERE", "WIZARDLM"]
+# Currently LLAMA2, GPT4ALL, WIZARDLM are all slow to respond. Will update this later
+model_names = ["PALM", "OPENAI", "COHERE"]
 model_index = 0
 model_name = model_names[model_index]
 
