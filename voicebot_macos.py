@@ -17,10 +17,9 @@ from langchain.embeddings import OpenAIEmbeddings
 from llama_index.llms import AzureOpenAI
 from llama_index import (
     VectorStoreIndex,
-    ListIndex,
+    SummaryIndex,
     LangchainEmbedding,
     PromptHelper,
-    Prompt,
     SimpleDirectoryReader,
     ServiceContext,
     get_response_synthesizer,
@@ -31,6 +30,7 @@ from llama_index.query_engine import RetrieverQueryEngine
 from llama_index.indices.postprocessor import SimilarityPostprocessor
 from llama_index.text_splitter import SentenceSplitter
 from llama_index.node_parser import SimpleNodeParser
+from llama_index.prompts import PromptTemplate
 
 def clearallfiles():
     # Ensure the UPLOAD_FOLDER is empty
@@ -134,19 +134,19 @@ def summarize(data_folder):
     
     # Reset OpenAI API type and base
     openai.api_type = azure_api_type
-    openai.api_base = azure_api_base
+    openai.api_base = azure_api_base   
     # Initialize a document
     documents = SimpleDirectoryReader(data_folder).load_data()
     #index = VectorStoreIndex.from_documents(documents)
-    list_index = ListIndex.from_documents(documents)
-    # ListIndexRetriever
-    retriever = list_index.as_retriever(
+    summary_index = SummaryIndex.from_documents(documents)
+    # SummaryIndexRetriever
+    retriever = summary_index.as_retriever(
         retriever_mode='default',
     )
     # configure response synthesizer
     response_synthesizer = get_response_synthesizer(
         response_mode="tree_summarize",
-        text_qa_template=summary_template,
+        summary_template=summary_template,
     )
     # assemble query engine
     query_engine = RetrieverQueryEngine(
@@ -309,7 +309,7 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
         openai.api_version = azure_chatapi_version
         openai.api_key = azure_api_key
         response = openai.ChatCompletion.create(
-            engine="gpt-3p5-turbo-16k",
+            engine="gpt-4",
             messages=conversation,
             temperature=temperature,
             max_tokens=max_tokens,
@@ -376,18 +376,21 @@ bing_api_key = os.getenv("BING_API_KEY")
 bing_endpoint = os.getenv("BING_ENDPOINT") + "/v7.0/search"
 bing_news_endpoint = os.getenv("BING_ENDPOINT") + "/v7.0/news/search"
 
+
 # max LLM token input size
-max_input_size = 4096
+max_input_size = 96000
 num_output = 1024
 max_chunk_overlap_ratio = 0.1
-chunk_size = 512
-context_window = 4096
+chunk_size = 256
+context_window = 32000
 prompt_helper = PromptHelper(max_input_size, num_output, max_chunk_overlap_ratio)
 text_splitter = SentenceSplitter(
     separator=" ",
     chunk_size=chunk_size,
     chunk_overlap=20,
-    paragraph_separator="\n\n\n"
+    paragraph_separator="\n\n\n",
+    secondary_chunking_regex="[^,.;。]+[,.;。]?",
+    tokenizer=tiktoken.encoding_for_model("gpt-4").encode
 )
 node_parser = SimpleNodeParser(text_splitter=text_splitter)
 
@@ -396,21 +399,21 @@ openai.api_type = azure_api_type
 openai.api_base = azure_api_base
 openai.api_key = azure_api_key
 
-# Check if user set the davinci model flag
-davincimodel_flag = False
-if davincimodel_flag:
-    LLM_DEPLOYMENT_NAME = "text-davinci-003"
-    LLM_MODEL_NAME = "text-davinci-003"
-    openai.api_version = azure_api_version
-    max_input_size = 4096
-    context_window = 4096
-    print("Using text-davinci-003 model.")
+# Check if user set the gpt4 model flag
+gpt4_flag = True
+if gpt4_flag:
+    LLM_DEPLOYMENT_NAME = "gpt-4-32k"
+    LLM_MODEL_NAME = "gpt-4-32k"
+    openai.api_version = azure_chatapi_version
+    max_input_size = 96000
+    context_window = 32000
+    print("Using gpt4-32k model.")
 else:
-    LLM_DEPLOYMENT_NAME = "gpt-3p5-turbo-16k"
+    LLM_DEPLOYMENT_NAME = "gpt-35-turbo-16k"
     LLM_MODEL_NAME = "gpt-35-turbo-16k"
     openai.api_version = azure_chatapi_version
-    max_input_size = 16384
-    context_window = 16384
+    max_input_size = 48000
+    context_window = 16000
     print("Using gpt-3p5-turbo-16k model.")
 
 llm = AzureOpenAI(
@@ -430,7 +433,7 @@ embedding_llm = LangchainEmbedding(
         openai_api_base=azure_api_base,
         openai_api_type=azure_api_type,
         openai_api_version=azure_api_version,
-        chunk_size=32,
+        chunk_size=16,
         max_retries=3,
     ),
     embed_batch_size=1,
@@ -454,7 +457,7 @@ sum_template = (
     "Using both the latest context information and also using your own knowledge, "
     "answer the question: {query_str}\n"
 )
-summary_template = Prompt(sum_template)
+summary_template = PromptTemplate(sum_template)
 
 ques_template = (
     "You are a world-class personal assistant connected to the internet. You will be provided snippets of information from the internet based on user's query. Here is the context:\n"
@@ -466,7 +469,7 @@ ques_template = (
     "Using both the latest context information and also using your own knowledge, "
     "answer the question: {query_str}\n"
 )
-qa_template = Prompt(ques_template)
+qa_template = PromptTemplate(ques_template)
 
 '''
 This script transcribes the native audio file to english language, sends this english text to GPT-3 for completion, and then translates the completed english text back to the native language and generates the audio response.

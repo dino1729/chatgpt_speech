@@ -11,5 +11,5 @@ tiktoken
 python-dotenv
 googlesearch
 newspaper3k
-llama-index==0.7.24.post1
-langchain==0.0.263
+llama-index==0.8.33
+langchain==0.0.302
