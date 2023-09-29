@@ -318,31 +318,12 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
             presence_penalty=0
         )
         return response['choices'][0]['message']['content']
-    elif model_name == "LLAMA2":
+    elif model_name == "WIZARDVICUNA7B":
         openai.api_type = llama2_api_type
+        openai.api_key = llama2_api_key
         openai.api_base = llama2_api_base
         response = openai.ChatCompletion.create(
-            model="llama2-7bchat",
-            messages=conversation,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
-        return response['choices'][0]['message']['content']
-    elif model_name == "GPT4ALL":
-        openai.api_type = llama2_api_type
-        openai.api_base = llama2_api_base
-        response = openai.ChatCompletion.create(
-            model="ggml-gpt4all-j",
-            messages=conversation,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
-        return response['choices'][0]['message']['content']
-    elif model_name == "WIZARDLM":
-        openai.api_type = llama2_api_type
-        openai.api_base = llama2_api_base
-        response = openai.ChatCompletion.create(
-            model="wizardlm-7b-8k-m",
+            model="wizardvicuna7b-uncensored-hf",
             messages=conversation,
             temperature=temperature,
             max_tokens=max_tokens,
@@ -370,6 +351,7 @@ LLM_DEPLOYMENT_NAME = "text-davinci-003"
 EMBEDDINGS_DEPLOYMENT_NAME = "text-embedding-ada-002"
 
 llama2_api_type = "open_ai"
+llama2_api_key = os.environ.get("LLAMA2_API_KEY")
 llama2_api_base = os.environ.get("LLAMA2_API_BASE")
 
 bing_api_key = os.getenv("BING_API_KEY")
@@ -482,9 +464,7 @@ system_prompt = [{
 temperature = 0.5
 max_tokens = 420
 
-# model_names = ["PALM", "OPENAI", "COHERE", "LLAMA2", "GPT4ALL", "WIZARDLM"]
-# Currently LLAMA2, GPT4ALL, WIZARDLM are all slow to respond. Will update this later
-model_names = ["PALM", "OPENAI", "COHERE"]
+model_names = ["WIZARDVICUNA7B", "PALM", "OPENAI", "COHERE"]
 model_index = 0
 model_name = model_names[model_index]
 
