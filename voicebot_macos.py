@@ -31,6 +31,8 @@ from llama_index.indices.postprocessor import SimilarityPostprocessor
 from llama_index.text_splitter import SentenceSplitter
 from llama_index.node_parser import SimpleNodeParser
 from llama_index.prompts import PromptTemplate
+from llama_index.agent import OpenAIAgent
+from llama_hub.tools.weather.base import OpenWeatherMapToolSpec
 
 def clearallfiles():
     # Ensure the UPLOAD_FOLDER is empty
@@ -332,6 +334,21 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
     else:
         return "Invalid model name"
 
+def get_weather_data(query):
+    
+    # Initialize OpenWeatherMapToolSpec
+    weather_tool = OpenWeatherMapToolSpec(
+        key=openweather_api_key,
+    )
+
+    agent = OpenAIAgent.from_tools(
+        weather_tool.to_tool_list(),
+        llm=llm,
+        verbose=True,
+    )
+
+    return agent.chat(query)
+
 # Get API keys from environment variables
 dotenv.load_dotenv()
 cohere_api_key = os.environ["COHERE_API_KEY"]
@@ -358,6 +375,7 @@ bing_api_key = os.getenv("BING_API_KEY")
 bing_endpoint = os.getenv("BING_ENDPOINT") + "/v7.0/search"
 bing_news_endpoint = os.getenv("BING_ENDPOINT") + "/v7.0/news/search"
 
+openweather_api_key = os.environ.get("OPENWEATHER_API_KEY")
 
 # max LLM token input size
 max_input_size = 96000
@@ -531,6 +549,12 @@ try:
                         # Check if the user's query contains the word "news"
                         if "news" in english_text.lower():
                             assistant_reply = get_bing_news_results(english_text)
+                            print("{} Bot: {}".format(model_name, assistant_reply))
+                            new_assistant_message = {"role": "assistant", "content": assistant_reply}
+                            conversation.append(new_assistant_message)
+                        # Check if the user's query contains the word "weather"
+                        elif "weather" in english_text.lower():
+                            assistant_reply = get_weather_data(english_text)
                             print("{} Bot: {}".format(model_name, assistant_reply))
                             new_assistant_message = {"role": "assistant", "content": assistant_reply}
                             conversation.append(new_assistant_message)

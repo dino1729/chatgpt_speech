@@ -38,7 +38,7 @@ agent = OpenAIAgent.from_tools(
     llm=llm,
     verbose=True,
 )
-#print(agent.chat("Say I love you in 5 different languages"))
+print(agent.chat("Say I love you in 5 different languages"))
 
 bing_tool = BingSearchToolSpec(
     api_key=bing_api_key,

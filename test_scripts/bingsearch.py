@@ -1,107 +1,51 @@
-import imp
 import dotenv
 import os
 import requests
-import json
-from pprint import pprint
 from bs4 import BeautifulSoup
 from newspaper import Article
-import tiktoken
 import openai
-from llama_index import SimpleDirectoryReader, VectorStoreIndex, ListIndex, get_response_synthesizer, ServiceContext, set_global_service_context, LangchainEmbedding, Prompt
-from llama_index.indices.postprocessor import SimilarityPostprocessor
-from llama_index.retrievers import VectorIndexRetriever
-from llama_index.llms import AzureOpenAI
 from langchain.embeddings import OpenAIEmbeddings
+from llama_index.llms import AzureOpenAI
+from llama_index import (
+    VectorStoreIndex,
+    SummaryIndex,
+    LangchainEmbedding,
+    PromptHelper,
+    SimpleDirectoryReader,
+    ServiceContext,
+    get_response_synthesizer,
+    set_global_service_context,
+)
+from llama_index.retrievers import VectorIndexRetriever
 from llama_index.query_engine import RetrieverQueryEngine
-
+from llama_index.indices.postprocessor import SimilarityPostprocessor
+from llama_index.text_splitter import SentenceSplitter
+from llama_index.node_parser import SimpleNodeParser
+from llama_index.prompts import PromptTemplate
+from llama_index.agent import OpenAIAgent
+from llama_hub.tools.weather.base import OpenWeatherMapToolSpec
+import tiktoken
+import argparse
 import logging
 import sys
 
-logging.basicConfig(stream=sys.stdout, level=logging.INFO)
-logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
+def clearallfiles():
+    # Ensure the UPLOAD_FOLDER is empty
+    for root, dirs, files in os.walk(UPLOAD_FOLDER):
+        for file in files:
+            file_path = os.path.join(root, file)
+            os.remove(file_path)
 
-# Get API keys from environment variables
-dotenv.load_dotenv()
-os.environ["OPENAI_API_KEY"] = os.environ.get("AZURE_API_KEY")
-openai.api_type = "azure"
-openai.api_version = os.environ.get("AZURE_API_VERSION")
-openai.api_base = os.environ.get("AZURE_API_BASE")
-openai.api_key = os.environ.get("AZURE_API_KEY")
-LLM_DEPLOYMENT_NAME = "text-davinci-003"
-EMBEDDINGS_DEPLOYMENT_NAME = "text-embedding-ada-002"
-bing_api_key = os.getenv("BING_API_KEY")
-#endpoint for regular search
-bing_endpoint = os.getenv("BING_ENDPOINT") + "/v7.0/search"
-#endpoint for news search
-#bing_news_endpoint = os.getenv("BING_ENDPOINT") + "/v7.0/news/trendingtopics"
-bing_news_endpoint = os.getenv("BING_ENDPOINT") + "/v7.0/news/search"
-
-llm = AzureOpenAI(
-    engine=LLM_DEPLOYMENT_NAME, 
-    model=LLM_DEPLOYMENT_NAME,
-    openai_api_key=openai.api_key,
-    openai_api_base=openai.api_base,
-    openai_api_type=openai.api_type,
-    openai_api_version=openai.api_version,
-    temperature=0.5,
-    max_tokens=1024,
-)
-embedding_llm = LangchainEmbedding(
-    OpenAIEmbeddings(
-        model=EMBEDDINGS_DEPLOYMENT_NAME,
-        deployment=EMBEDDINGS_DEPLOYMENT_NAME,
-        openai_api_key=openai.api_key,
-        openai_api_base=openai.api_base,
-        openai_api_type=openai.api_type,
-        openai_api_version=openai.api_version,
-        chunk_size=32,
-        max_retries=3,
-    ),
-    embed_batch_size=1,
-)
-service_context = ServiceContext.from_defaults(
-    llm=llm,
-    embed_model=embedding_llm,
-    chunk_size=512,
-)
-set_global_service_context(service_context)
-
-sum_template = (
-    "You are a world-class text summarizer. We have provided context information below. \n"
-    "---------------------\n"
-    "{context_str}"
-    "\n---------------------\n"
-    "Based on the information provided, your task is to summarize the input context while effectively conveying the main points and relevant information. The summary should be presented in the style of a news reader, using your own words to accurately capture the essence of the content. It is important to refrain from directly copying word-for-word from the original context. Additionally, please ensure that the summary excludes any extraneous details such as discounts, promotions, sponsorships, or advertisements, and remains focused on the core message of the content.\n"
-    "---------------------\n"
-    "{query_str}"
-)
-summary_template = Prompt(sum_template)
-
-ques_template = (
-    "You are a world-class personal assistant connected to the internet. You will be provided snippets of information from the internet based on user's query. Here is the context:\n"
-    "---------------------\n"
-    "{context_str}"
-    "\n---------------------\n"
-    "Based on the information provided, your task is to answer the user's question to the best of your ability. You can use your own knowledge base to answer the question and only use the relavant information from the internet incase you don't have knowledge of the latest information to correctly answer user's question\n"
-    "---------------------\n"
-    "{query_str}"
-)
-qa_template = Prompt(ques_template)
-
-def save_to_file(text, filename):
-    # Create the data folder if it doesn't exist
-    if not os.path.exists('./data'):
-        os.makedirs('./data')
+def saveextractedtext_to_file(text, filename):
 
     # Save the output to the article.txt file
-    file_path = os.path.join('./data', filename)
+    file_path = os.path.join(UPLOAD_FOLDER, filename)
     with open(file_path, 'w') as file:
         file.write(text)
 
     return f"Text saved to {file_path}"
 
-def download_art(url):
+def text_extractor(url):
 
     if url:
         # Extract the article
@@ -127,6 +71,7 @@ def download_art(url):
 
 def get_bing_results(query, num=10):
 
+    clearallfiles()
     # Construct a request
     mkt = 'en-US'
     params = { 'q': query, 'mkt': mkt, 'count': num, 'responseFilter': ['Webpages','News'] }
@@ -139,18 +84,19 @@ def get_bing_results(query, num=10):
     combined_snippets = '\n'.join(all_snippets)
     
     # Format the results as a string
-    output = f"Here is the short summary from Bing for the query: '{query}':\n"
+    output = f"Here is the context from Bing for the query: '{query}':\n"
     output += combined_snippets
 
     # Save the output to a file
-    save_to_file(output, "bing_results.txt")
+    saveextractedtext_to_file(output, "bing_results.txt")
     # Query the results using llama-index
-    answer = simple_query("./data", query)
+    answer = str(simple_query(UPLOAD_FOLDER, query)).strip()
 
     return answer
 
 def get_bing_news_results(query, num=5):
 
+    clearallfiles()
     # Construct a request
     mkt = 'en-US'
     params = { 'q': query, 'mkt': mkt, 'freshness': 'Day', 'count': num }
@@ -161,7 +107,7 @@ def get_bing_news_results(query, num=5):
 
     # Extract text from the urls and append them into a single text variable
     all_urls = [result['url'] for result in response_data['value']]
-    all_snippets = [download_art(url) for url in all_urls]
+    all_snippets = [text_extractor(url) for url in all_urls]
 
     # Combine snippets with titles and article names
     combined_output = ""
@@ -175,37 +121,57 @@ def get_bing_news_results(query, num=5):
     output += combined_output
 
     # Save the output to a file
-    save_to_file(output, "bing_results.txt")
+    saveextractedtext_to_file(output, "bing_results.txt")
     # Summarize the bing search response
-    summary = summarize("./data")
+    bingsummary = str(summarize(UPLOAD_FOLDER)).strip()
 
-    return summary
+    return bingsummary
 
 def summarize(data_folder):
+    
+    # Reset OpenAI API type and base
+    openai.api_type = azure_api_type
+    openai.api_base = azure_api_base   
     # Initialize a document
     documents = SimpleDirectoryReader(data_folder).load_data()
     #index = VectorStoreIndex.from_documents(documents)
-    index = ListIndex.from_documents(documents)
-    # ListIndexRetriever
-    retriever = index.as_retriever(retriever_mode='default')
-    # tree summarize
-    query_engine = RetrieverQueryEngine.from_args(retriever, response_mode='tree_summarize', text_qa_template=summary_template)
-    response = query_engine.query("Generate a summary of the input context. Be as verbose as possible")
+    summary_index = SummaryIndex.from_documents(documents)
+    # SummaryIndexRetriever
+    retriever = summary_index.as_retriever(
+        retriever_mode='default',
+    )
+    # configure response synthesizer
+    response_synthesizer = get_response_synthesizer(
+        response_mode="tree_summarize",
+        summary_template=summary_template,
+    )
+    # assemble query engine
+    query_engine = RetrieverQueryEngine(
+        retriever=retriever,
+        response_synthesizer=response_synthesizer,
+    )
+    response = query_engine.query("Generate a summary of the input context. Be as verbose as possible, while keeping the summary concise and to the point.")
 
     return response
 
 def simple_query(data_folder, query):
+    
+    # Reset OpenAI API type and base
+    openai.api_type = azure_api_type
+    openai.api_base = azure_api_base  
     # Initialize a document
     documents = SimpleDirectoryReader(data_folder).load_data()
     #index = VectorStoreIndex.from_documents(documents)
-    index = VectorStoreIndex.from_documents(documents)
+    vector_index = VectorStoreIndex.from_documents(documents)
     # configure retriever
     retriever = VectorIndexRetriever(
-        index=index,
-        similarity_top_k=5,
+        index=vector_index,
+        similarity_top_k=6,
     )
     # # configure response synthesizer
-    response_synthesizer = get_response_synthesizer(text_qa_template=qa_template)
+    response_synthesizer = get_response_synthesizer(
+        text_qa_template=qa_template,
+    )
     # # assemble query engine
     query_engine = RetrieverQueryEngine(
         retriever=retriever,
@@ -213,22 +179,167 @@ def simple_query(data_folder, query):
         node_postprocessors=[
             SimilarityPostprocessor(similarity_cutoff=0.7)
         ],
-        )
+    )
     response = query_engine.query(query)
 
     return response
 
-query1 = input("What would you like to search Bing for? ")
+def get_weather_data(query):
+    
+    # Initialize OpenWeatherMapToolSpec
+    weather_tool = OpenWeatherMapToolSpec(
+        key=openweather_api_key,
+    )
 
-# Check if the query contains the words news
-if "news" in query1:
-    bing_newsresults_summary = get_bing_news_results(query1)
-    print(bing_newsresults_summary)
+    agent = OpenAIAgent.from_tools(
+        weather_tool.to_tool_list(),
+        llm=llm,
+        verbose=True,
+    )
 
-else:
-    bing_searchresults = get_bing_results(query1)
-    print(bing_searchresults)
+    return agent.chat(query)
 
+if __name__ == "__main__":
+
+    logging.basicConfig(stream=sys.stdout, level=logging.WARN)
+    logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
+
+    # Get API keys from environment variables
+    dotenv.load_dotenv()
+    azure_api_key = os.environ["AZURE_API_KEY"]
+    azure_api_type = "azure"
+    azure_api_base = os.environ.get("AZURE_API_BASE")
+    azure_api_version = os.environ.get("AZURE_API_VERSION")
+    azure_chatapi_version = os.environ.get("AZURE_CHATAPI_VERSION")
+    EMBEDDINGS_DEPLOYMENT_NAME = "text-embedding-ada-002"
+
+    bing_api_key = os.getenv("BING_API_KEY")
+    bing_endpoint = os.getenv("BING_ENDPOINT") + "/v7.0/search"
+    bing_news_endpoint = os.getenv("BING_ENDPOINT") + "/v7.0/news/search"
+
+    openweather_api_key = os.environ.get("OPENWEATHER_API_KEY")
+
+    # max LLM token input size
+    max_input_size = 96000
+    num_output = 1024
+    max_chunk_overlap_ratio = 0.1
+    chunk_size = 256
+    context_window = 32000
+    prompt_helper = PromptHelper(max_input_size, num_output, max_chunk_overlap_ratio)
+    text_splitter = SentenceSplitter(
+        separator=" ",
+        chunk_size=chunk_size,
+        chunk_overlap=20,
+        paragraph_separator="\n\n\n",
+        secondary_chunking_regex="[^,.;。]+[,.;。]?",
+        tokenizer=tiktoken.encoding_for_model("gpt-4").encode
+    )
+    node_parser = SimpleNodeParser(text_splitter=text_splitter)
+
+    os.environ["OPENAI_API_KEY"] = azure_api_key
+    openai.api_type = azure_api_type
+    openai.api_base = azure_api_base
+    openai.api_key = azure_api_key
+
+    # Check if user set the gpt4 model flag
+    gpt4_flag = True
+    if gpt4_flag:
+        LLM_DEPLOYMENT_NAME = "gpt-4-32k"
+        LLM_MODEL_NAME = "gpt-4-32k"
+        openai.api_version = azure_chatapi_version
+        max_input_size = 96000
+        context_window = 32000
+        print("Using gpt4-32k model.")
+    else:
+        LLM_DEPLOYMENT_NAME = "gpt-35-turbo-16k"
+        LLM_MODEL_NAME = "gpt-35-turbo-16k"
+        openai.api_version = azure_chatapi_version
+        max_input_size = 48000
+        context_window = 16000
+        print("Using gpt-3p5-turbo-16k model.")
+
+    llm = AzureOpenAI(
+        engine=LLM_DEPLOYMENT_NAME, 
+        model=LLM_MODEL_NAME,
+        openai_api_key=azure_api_key,
+        openai_api_base=azure_api_base,
+        openai_api_type=azure_api_type,
+        temperature=0.5,
+        max_tokens=1024,
+    )
+    embedding_llm = LangchainEmbedding(
+        OpenAIEmbeddings(
+            model=EMBEDDINGS_DEPLOYMENT_NAME,
+            deployment=EMBEDDINGS_DEPLOYMENT_NAME,
+            openai_api_key=azure_api_key,
+            openai_api_base=azure_api_base,
+            openai_api_type=azure_api_type,
+            openai_api_version=azure_api_version,
+            chunk_size=16,
+            max_retries=3,
+        ),
+        embed_batch_size=1,
+    )
+    service_context = ServiceContext.from_defaults(
+        llm=llm,
+        embed_model=embedding_llm,
+        prompt_helper=prompt_helper,
+        chunk_size=chunk_size,
+        context_window=context_window,
+        node_parser=node_parser,
+    )
+    set_global_service_context(service_context)
+    sum_template = (
+        "You are a world-class text summarizer connected to the internet. We have provided context information below from the internet below. \n"
+        "---------------------\n"
+        "{context_str}"
+        "\n---------------------\n"
+        "Based on the context provided, your task is to summarize the input context while effectively conveying the main points and relevant information. The summary should be presented in the format of news headlines. It is important to refrain from directly copying word-for-word from the original context. Additionally, please ensure that the summary excludes any extraneous details such as discounts, promotions, sponsorships, or advertisements, and remains focused on the core message of the content.\n"
+        "---------------------\n"
+        "Using both the latest context information and also using your own knowledge, "
+        "answer the question: {query_str}\n"
+    )
+    summary_template = PromptTemplate(sum_template)
+
+    ques_template = (
+        "You are a world-class personal assistant connected to the internet. You will be provided snippets of information from the internet based on user's query. Here is the context:\n"
+        "---------------------\n"
+        "{context_str}\n"
+        "\n---------------------\n"
+        "Based on the context provided, your task is to answer the user's question to the best of your ability. It is important to refrain from directly copying word-for-word from the original context. Additionally, please ensure that the summary excludes any extraneous details such as discounts, promotions, sponsorships, or advertisements, and remains focused on the core message of the content.\n"
+        "---------------------\n"
+        "Using both the latest context information and also using your own knowledge, "
+        "answer the question: {query_str}\n"
+    )
+    qa_template = PromptTemplate(ques_template)
+
+    UPLOAD_FOLDER = os.path.join(".", "data")
+    if not os.path.exists(UPLOAD_FOLDER):
+        os.makedirs(UPLOAD_FOLDER)
+
+   # Define a list of keywords that trigger Bing search
+    keywords = ["latest", "current", "recent", "update", "best", "top", "news", "weather", "summary", "previous"]
+
+    # Get user query from args
+    parser = argparse.ArgumentParser(description="Bing+ChatGPT tool.")
+    parser.add_argument("query", help="User query")
+    args = parser.parse_args()
+    userquery = args.query
+
+
+    # Check if the query contains any of the keywords
+    if any(keyword in userquery.lower() for keyword in keywords):
+        # Check if the query contains the word news
+        if "news" in userquery.lower():
+            bing_newsresults = get_bing_news_results(userquery)
+            print(bing_newsresults)
+        # Check if the query contains the word weather
+        elif "weather" in userquery.lower():
+            weatherdata = get_weather_data(userquery)
+            print(weatherdata)
+        else:
+            bing_searchresults = get_bing_results(userquery)
+            print(bing_searchresults)
 
 
 
