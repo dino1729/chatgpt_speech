@@ -13,3 +13,4 @@ googlesearch
 newspaper3k
 llama-index==0.8.33
 langchain==0.0.302
+llama-hub==0.0.34

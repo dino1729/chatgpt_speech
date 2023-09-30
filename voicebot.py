@@ -132,6 +132,21 @@ def get_bing_news_results(query, num=5):
 
     return bingsummary
 
+def get_weather_data(query):
+    
+    # Initialize OpenWeatherMapToolSpec
+    weather_tool = OpenWeatherMapToolSpec(
+        key=openweather_api_key,
+    )
+
+    agent = OpenAIAgent.from_tools(
+        weather_tool.to_tool_list(),
+        llm=llm,
+        verbose=True,
+    )
+
+    return agent.chat(query)
+
 def summarize(data_folder):
     
     # Reset OpenAI API type and base
@@ -330,20 +345,6 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
     else:
         return "Invalid model name"
 
-def get_weather_data(query):
-    
-    # Initialize OpenWeatherMapToolSpec
-    weather_tool = OpenWeatherMapToolSpec(
-        key=openweather_api_key,
-    )
-
-    agent = OpenAIAgent.from_tools(
-        weather_tool.to_tool_list(),
-        llm=llm,
-        verbose=True,
-    )
-
-    return agent.chat(query)
 
 # Get API keys from environment variables
 dotenv.load_dotenv()

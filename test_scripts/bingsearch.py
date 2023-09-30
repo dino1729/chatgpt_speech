@@ -1,5 +1,7 @@
 import dotenv
 import os
+import cohere
+import google.generativeai as palm
 import requests
 from bs4 import BeautifulSoup
 from newspaper import Article
@@ -28,6 +30,7 @@ import tiktoken
 import argparse
 import logging
 import sys
+import random
 
 def clearallfiles():
     # Ensure the UPLOAD_FOLDER is empty
@@ -127,6 +130,21 @@ def get_bing_news_results(query, num=5):
 
     return bingsummary
 
+def get_weather_data(query):
+    
+    # Initialize OpenWeatherMapToolSpec
+    weather_tool = OpenWeatherMapToolSpec(
+        key=openweather_api_key,
+    )
+
+    agent = OpenAIAgent.from_tools(
+        weather_tool.to_tool_list(),
+        llm=llm,
+        verbose=True,
+    )
+
+    return agent.chat(query)
+
 def summarize(data_folder):
     
     # Reset OpenAI API type and base
@@ -184,34 +202,73 @@ def simple_query(data_folder, query):
 
     return response
 
-def get_weather_data(query):
+def generate_chat(model_name, conversation, temperature, max_tokens):
     
-    # Initialize OpenWeatherMapToolSpec
-    weather_tool = OpenWeatherMapToolSpec(
-        key=openweather_api_key,
-    )
-
-    agent = OpenAIAgent.from_tools(
-        weather_tool.to_tool_list(),
-        llm=llm,
-        verbose=True,
-    )
-
-    return agent.chat(query)
+    if model_name == "COHERE":
+        co = cohere.Client(cohere_api_key)
+        response = co.generate(
+            model='command-nightly',
+            prompt=str(conversation).replace("'", '"'),
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        return response.generations[0].text
+    elif model_name == "PALM":
+        palm.configure(api_key=google_palm_api_key)
+        response = palm.chat(
+            model="models/chat-bison-001",
+            messages=str(conversation).replace("'", '"'),
+            temperature=temperature,
+        )
+        return response.last
+    elif model_name == "OPENAI":
+        openai.api_type = azure_api_type
+        openai.api_base = azure_api_base
+        openai.api_version = azure_chatapi_version
+        openai.api_key = azure_api_key
+        response = openai.ChatCompletion.create(
+            engine="gpt-4",
+            messages=conversation,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            top_p=1,
+            frequency_penalty=0,
+            presence_penalty=0
+        )
+        return response['choices'][0]['message']['content']
+    elif model_name == "WIZARDVICUNA7B":
+        openai.api_type = llama2_api_type
+        openai.api_key = llama2_api_key
+        openai.api_base = llama2_api_base
+        response = openai.ChatCompletion.create(
+            model="wizardvicuna7b-uncensored-hf",
+            messages=conversation,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        return response['choices'][0]['message']['content']
+    else:
+        return "Invalid model name"
 
 if __name__ == "__main__":
 
-    logging.basicConfig(stream=sys.stdout, level=logging.WARN)
+    logging.basicConfig(stream=sys.stdout, level=logging.CRITICAL)
     logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 
     # Get API keys from environment variables
     dotenv.load_dotenv()
+    cohere_api_key = os.environ["COHERE_API_KEY"]
+    google_palm_api_key = os.environ["GOOGLE_PALM_API_KEY"]
     azure_api_key = os.environ["AZURE_API_KEY"]
     azure_api_type = "azure"
     azure_api_base = os.environ.get("AZURE_API_BASE")
     azure_api_version = os.environ.get("AZURE_API_VERSION")
     azure_chatapi_version = os.environ.get("AZURE_CHATAPI_VERSION")
     EMBEDDINGS_DEPLOYMENT_NAME = "text-embedding-ada-002"
+
+    llama2_api_type = "open_ai"
+    llama2_api_key = os.environ.get("LLAMA2_API_KEY")
+    llama2_api_base = os.environ.get("LLAMA2_API_BASE")
 
     bing_api_key = os.getenv("BING_API_KEY")
     bing_endpoint = os.getenv("BING_ENDPOINT") + "/v7.0/search"
@@ -249,21 +306,19 @@ if __name__ == "__main__":
         openai.api_version = azure_chatapi_version
         max_input_size = 96000
         context_window = 32000
-        print("Using gpt4-32k model.")
     else:
         LLM_DEPLOYMENT_NAME = "gpt-35-turbo-16k"
         LLM_MODEL_NAME = "gpt-35-turbo-16k"
         openai.api_version = azure_chatapi_version
         max_input_size = 48000
         context_window = 16000
-        print("Using gpt-3p5-turbo-16k model.")
 
     llm = AzureOpenAI(
         engine=LLM_DEPLOYMENT_NAME, 
         model=LLM_MODEL_NAME,
-        openai_api_key=azure_api_key,
-        openai_api_base=azure_api_base,
-        openai_api_type=azure_api_type,
+        api_key=azure_api_key,
+        api_base=azure_api_base,
+        api_type=azure_api_type,
         temperature=0.5,
         max_tokens=1024,
     )
@@ -313,6 +368,19 @@ if __name__ == "__main__":
     )
     qa_template = PromptTemplate(ques_template)
 
+    system_prompt = [{
+        "role": "system",
+        "content": "You are a helpful and super-intelligent voice assistant, that accurately answers user queries. Be accurate, helpful, concise, and clear."
+    }]
+    model_names = ["WIZARDVICUNA7B", "PALM", "OPENAI", "COHERE"]
+    model_index = 0
+    model_name = model_names[model_index]
+    temperature = 0.3
+    max_tokens = 1024
+
+    # Initialize the conversation
+    conversation = system_prompt.copy() 
+
     UPLOAD_FOLDER = os.path.join(".", "data")
     if not os.path.exists(UPLOAD_FOLDER):
         os.makedirs(UPLOAD_FOLDER)
@@ -325,6 +393,10 @@ if __name__ == "__main__":
     parser.add_argument("query", help="User query")
     args = parser.parse_args()
     userquery = args.query
+
+    # User Query formatted into array
+    user_message = {"role": "user", "content": userquery}
+    conversation.append(user_message)
 
 
     # Check if the query contains any of the keywords
@@ -340,6 +412,13 @@ if __name__ == "__main__":
         else:
             bing_searchresults = get_bing_results(userquery)
             print(bing_searchresults)
+    else:
+        # Query the results using random model
+        random_model = random.choice(model_names)
+        assistant_reply = generate_chat(random_model, conversation, temperature, max_tokens)
+        new_assistant_message = {"role": "assistant", "content": assistant_reply}
+        conversation.append(new_assistant_message)
+        print(f"{random_model} says: {assistant_reply}")
 
 
 
