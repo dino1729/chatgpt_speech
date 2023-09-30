@@ -347,7 +347,7 @@ azurespeechkey = os.environ.get("AZURE_SPEECH_KEY")
 azurespeechregion = os.environ.get("AZURE_SPEECH_REGION")
 azuretexttranslatorkey = os.environ.get("AZURE_TEXT_TRANSLATOR_KEY")
 
-LLM_DEPLOYMENT_NAME = "text-davinci-003"
+LLM_DEPLOYMENT_NAME = "gpt-4-32k"
 EMBEDDINGS_DEPLOYMENT_NAME = "text-embedding-ada-002"
 
 llama2_api_type = "open_ai"
