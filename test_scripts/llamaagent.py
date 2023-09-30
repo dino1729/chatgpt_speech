@@ -15,17 +15,10 @@ openai.api_base = os.environ.get("AZURE_API_BASE")
 openai.api_key = os.environ.get("AZURE_API_KEY")
 
 # Check if user set the davinci model flag
-davincimodel_flag = False
-if davincimodel_flag:
-    LLM_DEPLOYMENT_NAME = "text-davinci-003"
-    LLM_MODEL_NAME = "text-davinci-003"
-    openai.api_version = os.environ.get("AZURE_API_VERSION")
-    print("Using text-davinci-003 model.")
-else:
-    LLM_DEPLOYMENT_NAME = "gpt-3p5-turbo-16k"
-    LLM_MODEL_NAME = "gpt-35-turbo-16k"
-    openai.api_version = os.environ.get("AZURE_CHATAPI_FUNCTIONS_VERSION")
-    print("Using gpt-3p5-turbo-16k 2023-07-01-preview model.")
+LLM_DEPLOYMENT_NAME = "gpt-4"
+LLM_MODEL_NAME = "gpt-4"
+openai.api_version = os.environ.get("AZURE_CHATAPI_FUNCTIONS_VERSION")
+print("Using gpt-4 2023-07-01-preview model.")
 
 llm = AzureOpenAI(
     engine=LLM_DEPLOYMENT_NAME, 
@@ -45,7 +38,7 @@ agent = OpenAIAgent.from_tools(
     llm=llm,
     verbose=True,
 )
-print(agent.chat("Say I love you in 5 different languages"))
+#print(agent.chat("Say I love you in 5 different languages"))
 
 bing_tool = BingSearchToolSpec(
     api_key=bing_api_key,
@@ -55,9 +48,10 @@ agent = OpenAIAgent.from_tools(
     llm=llm,
     verbose=True,
 )
+
 print("-------------------------------------------------------")
-print(agent.chat("whats the latest news about India"))
+print(agent.chat("whats the latest news summary about India?"))
 print("-------------------------------------------------------")
-print(agent.chat("what is latest financial news from the USA"))
+print(agent.chat('who is Ange Postecoglou, where is he now and what is his philosophy about football?'))
 print("-------------------------------------------------------")
-print(agent.chat("who is douglas adams and what is the meaning of life, meaning and the universe"))
+print(agent.chat("whats the latest financial news summary?"))
