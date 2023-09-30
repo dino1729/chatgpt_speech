@@ -142,10 +142,10 @@ def get_weather_data(query):
     agent = OpenAIAgent.from_tools(
         weather_tool.to_tool_list(),
         llm=llm,
-        verbose=True,
+        verbose=False,
     )
 
-    return agent.chat(query)
+    return str(agent.chat(query))
 
 def summarize(data_folder):
     
@@ -510,7 +510,7 @@ try:
     while True:
         
         # Check if it's time to reset the conversation based on token count or inactivity
-        if len(encoding.encode(json.dumps(conversation))) > max_token_count or time.time() - last_activity_time > max_timeout:
+        if len(encoding.encode(json.dumps(str(conversation)))) > max_token_count or time.time() - last_activity_time > max_timeout:
             conversation = system_prompt.copy()  # Reset the conversation to the default
             print("Conversation reset. Changing Model...") 
             # Increment the model index
