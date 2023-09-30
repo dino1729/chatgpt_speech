@@ -545,55 +545,50 @@ try:
                 print("You: {}; Language {}".format(english_text, detected_audio_language))
                 new_message = {"role": "user", "content": english_text}
                 conversation.append(new_message)
-                # Generate a response using the selected model
-                try:
-                    # Check if the user's query contains any of the keywords
-                    if any(keyword in english_text.lower() for keyword in keywords):
-                        model_name = "BING+OPENAI"
-                        # Check if the user's query contains the word "news"
-                        if "news" in english_text.lower():
-                            assistant_reply = get_bing_news_results(english_text)
-                            print("{} Bot: {}".format(model_name, assistant_reply))
-                            new_assistant_message = {"role": "assistant", "content": assistant_reply}
-                            conversation.append(new_assistant_message)
-                        # Check if the user's query contains the word "weather"
-                        elif "weather" in english_text.lower():
-                            assistant_reply = get_weather_data(english_text)
-                            print("{} Bot: {}".format(model_name, assistant_reply))
-                            new_assistant_message = {"role": "assistant", "content": assistant_reply}
-                            conversation.append(new_assistant_message)
-                        else:
-                            assistant_reply = get_bing_results(english_text)
-                            print("{} Bot: {}".format(model_name, assistant_reply))
-                            new_assistant_message = {"role": "assistant", "content": assistant_reply}
-                            conversation.append(new_assistant_message)
-                    else:
-                        # Set the model name to the selected model
-                        model_name = model_names[model_index]
-                        # Generate a response using the selected model
-                        assistant_reply = generate_chat(model_name, conversation, temperature, max_tokens)
-                        print("{} Bot: {}".format(model_name, assistant_reply))
-                        new_assistant_message = {"role": "assistant", "content": assistant_reply}
-                        conversation.append(new_assistant_message)
-                    try:
-                        translated_message = translate_text(assistant_reply, detected_audio_language)
-                        text_to_speech(translated_message, tts_output_path, detected_audio_language, model_name)
-                    except Exception as e:
-                        print("Translation error:", str(e))
-                        text_to_speech("Sorry, I couldn't answer that.", tts_output_path, "en-US", model_name)
-
-                except Exception as e:
-                    print("Model error:", str(e))
-                    #Reset the conversation to the default
-                    print("Resetting conversation...")
-                    conversation = system_prompt.copy()
-
-                # Delete the audio files
-                os.remove(audio_path)
-                os.remove(tts_output_path)
-
             except Exception as e:
                 print("Transcription error:", str(e))
+                continue # Skip the rest of the loop and start recording again
+
+            # Generate a response using the selected model
+            try:
+                # Check if the user's query contains any of the keywords
+                if any(keyword in english_text.lower() for keyword in keywords):
+                    model_name = "BING+OPENAI"
+                    # Check if the user's query contains the word "news"
+                    if "news" in english_text.lower():
+                        assistant_reply = get_bing_news_results(english_text)
+                    # Check if the user's query contains the word "weather"
+                    elif "weather" in english_text.lower():
+                        assistant_reply = get_weather_data(english_text)
+                    else:
+                        assistant_reply = get_bing_results(english_text)
+                else:
+                    # Set the model name to the selected model
+                    model_name = model_names[model_index]
+                    # Generate a response using the selected model
+                    assistant_reply = generate_chat(model_name, conversation, temperature, max_tokens)
+                print("{} Bot: {}".format(model_name, assistant_reply))
+                new_assistant_message = {"role": "assistant", "content": assistant_reply}
+                conversation.append(new_assistant_message)
+            except Exception as e:
+                print("Model error:", str(e))
+                continue  # Skip the rest of this loop iteration
+
+            try:
+                translated_message = translate_text(assistant_reply, detected_audio_language)
+                text_to_speech(translated_message, tts_output_path, detected_audio_language, model_name)
+            except Exception as e:
+                print("Translation error:", str(e))
+                text_to_speech("Sorry, I couldn't answer that.", tts_output_path, "en-US", model_name)
+                continue
+
+            # Delete the audio files
+            try:
+                os.remove(audio_path)
+                os.remove(tts_output_path)
+            except Exception as e:
+                print("Error deleting audio files:", str(e))
+                continue
 
 except KeyboardInterrupt:
     print("\nScript terminated by user.")
