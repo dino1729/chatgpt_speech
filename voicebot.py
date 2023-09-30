@@ -416,9 +416,9 @@ else:
 llm = AzureOpenAI(
     engine=LLM_DEPLOYMENT_NAME, 
     model=LLM_MODEL_NAME,
-    openai_api_key=azure_api_key,
-    openai_api_base=azure_api_base,
-    openai_api_type=azure_api_type,
+    api_key=azure_api_key,
+    api_base=azure_api_base,
+    api_type=azure_api_type,
     temperature=0.5,
     max_tokens=1024,
 )

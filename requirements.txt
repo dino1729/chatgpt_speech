@@ -12,5 +12,6 @@ python-dotenv
 googlesearch
 newspaper3k
 llama-index==0.8.33
+pyowm
 langchain==0.0.302
 llama-hub==0.0.34
