@@ -133,7 +133,12 @@ def get_bing_news_results(query, num=5):
     return bingsummary
 
 def get_weather_data(query):
-    
+
+    # Reset OpenAI API type and base
+    openai.api_type = azure_api_type
+    openai.api_key = azure_api_key
+    openai.api_base = azure_api_base
+
     # Initialize OpenWeatherMapToolSpec
     weather_tool = OpenWeatherMapToolSpec(
         key=openweather_api_key,
@@ -151,7 +156,9 @@ def summarize(data_folder):
     
     # Reset OpenAI API type and base
     openai.api_type = azure_api_type
-    openai.api_base = azure_api_base   
+    openai.api_key = azure_api_key
+    openai.api_base = azure_api_base
+
     # Initialize a document
     documents = SimpleDirectoryReader(data_folder).load_data()
     #index = VectorStoreIndex.from_documents(documents)
@@ -178,7 +185,9 @@ def simple_query(data_folder, query):
     
     # Reset OpenAI API type and base
     openai.api_type = azure_api_type
+    openai.api_key = azure_api_key
     openai.api_base = azure_api_base
+
     # Initialize a document
     documents = SimpleDirectoryReader(data_folder).load_data()
     #index = VectorStoreIndex.from_documents(documents)
@@ -247,18 +256,16 @@ def text_to_speech(text, output_path, language, model_name):
         default_voice = "en-US-AriaNeural"
         if model_name == "PALM":
             speech_config.speech_synthesis_voice_name = "en-US-JaneNeural"
-        elif model_name == "OPENAI":
+        elif model_name == "GPT4":
+            speech_config.speech_synthesis_voice_name = "en-US-BlueNeural"
+        elif model_name == "GPT35TURBO":
             speech_config.speech_synthesis_voice_name = "en-US-AnaNeural"
         elif model_name == "COHERE":
             speech_config.speech_synthesis_voice_name = "en-US-SaraNeural"
         elif model_name == "BING+OPENAI":
             speech_config.speech_synthesis_voice_name = "en-US-JennyNeural"
-        elif model_name == "LLAMA2":
+        elif model_name == "WIZARDVICUNA7B":
             speech_config.speech_synthesis_voice_name = "en-US-AmberNeural"
-        elif model_name == "GPT4ALL":
-            speech_config.speech_synthesis_voice_name = "en-US-AshleyNeural"
-        elif model_name == "WIZARDLM":
-            speech_config.speech_synthesis_voice_name = "en-US-CoraNeural"
         else:
             speech_config.speech_synthesis_voice_name = default_voice
     # Use the default speaker as audio output and start playing the audio
@@ -320,7 +327,7 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
             temperature=temperature,
         )
         return response.last
-    elif model_name == "OPENAI":
+    elif model_name == "GPT4":
         openai.api_type = azure_api_type
         openai.api_base = azure_api_base
         openai.api_version = azure_chatapi_version
@@ -330,9 +337,24 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
             messages=conversation,
             temperature=temperature,
             max_tokens=max_tokens,
+            top_p=0.9,
+            frequency_penalty=0.6,
+            presence_penalty=0.1
+        )
+        return response['choices'][0]['message']['content']
+    elif model_name == "GPT35TURBO":
+        openai.api_type = azure_api_type
+        openai.api_base = azure_api_base
+        openai.api_version = azure_chatapi_version
+        openai.api_key = azure_api_key
+        response = openai.ChatCompletion.create(
+            engine="gpt-35-turbo",
+            messages=conversation,
+            temperature=temperature,
+            max_tokens=max_tokens,
             top_p=1,
-            frequency_penalty=0,
-            presence_penalty=0
+            frequency_penalty=0.6,
+            presence_penalty=0.1
         )
         return response['choices'][0]['message']['content']
     elif model_name == "WIZARDVICUNA7B":
@@ -358,14 +380,14 @@ google_palm_api_key = os.environ["GOOGLE_PALM_API_KEY"]
 azure_api_key = os.environ["AZURE_API_KEY"]
 azure_api_type = "azure"
 azure_api_base = os.environ.get("AZURE_API_BASE")
-azure_api_version = os.environ.get("AZURE_API_VERSION")
+azure_embeddingapi_version = os.environ.get("AZURE_EMBEDDINGAPI_VERSION")
 azure_chatapi_version = os.environ.get("AZURE_CHATAPI_VERSION")
 
 azurespeechkey = os.environ.get("AZURE_SPEECH_KEY")
 azurespeechregion = os.environ.get("AZURE_SPEECH_REGION")
 azuretexttranslatorkey = os.environ.get("AZURE_TEXT_TRANSLATOR_KEY")
 
-LLM_DEPLOYMENT_NAME = "gpt-4-32k"
+LLM_DEPLOYMENT_NAME = "gpt-35-turbo-16k"
 EMBEDDINGS_DEPLOYMENT_NAME = "text-embedding-ada-002"
 
 llama2_api_type = "open_ai"
@@ -379,21 +401,9 @@ bing_news_endpoint = os.getenv("BING_ENDPOINT") + "/v7.0/news/search"
 openweather_api_key = os.environ.get("OPENWEATHER_API_KEY")
 
 # max LLM token input size
-max_input_size = 96000
 num_output = 1024
 max_chunk_overlap_ratio = 0.1
 chunk_size = 256
-context_window = 32000
-prompt_helper = PromptHelper(max_input_size, num_output, max_chunk_overlap_ratio)
-text_splitter = SentenceSplitter(
-    separator=" ",
-    chunk_size=chunk_size,
-    chunk_overlap=20,
-    paragraph_separator="\n\n\n",
-    secondary_chunking_regex="[^,.;。]+[,.;。]?",
-    tokenizer=tiktoken.encoding_for_model("gpt-4").encode
-)
-node_parser = SimpleNodeParser(text_splitter=text_splitter)
 
 os.environ["OPENAI_API_KEY"] = azure_api_key
 openai.api_type = azure_api_type
@@ -401,21 +411,19 @@ openai.api_base = azure_api_base
 openai.api_key = azure_api_key
 
 # Check if user set the gpt4 model flag
-gpt4_flag = True
+gpt4_flag = False
 if gpt4_flag:
     LLM_DEPLOYMENT_NAME = "gpt-4-32k"
     LLM_MODEL_NAME = "gpt-4-32k"
     openai.api_version = azure_chatapi_version
     max_input_size = 96000
     context_window = 32000
-    print("Using gpt4-32k model.")
 else:
     LLM_DEPLOYMENT_NAME = "gpt-35-turbo-16k"
     LLM_MODEL_NAME = "gpt-35-turbo-16k"
     openai.api_version = azure_chatapi_version
     max_input_size = 48000
     context_window = 16000
-    print("Using gpt-3p5-turbo-16k model.")
 
 llm = AzureOpenAI(
     engine=LLM_DEPLOYMENT_NAME, 
@@ -424,8 +432,9 @@ llm = AzureOpenAI(
     api_base=azure_api_base,
     api_type=azure_api_type,
     temperature=0.5,
-    max_tokens=1024,
+    max_tokens=num_output,
 )
+
 embedding_llm = LangchainEmbedding(
     OpenAIEmbeddings(
         model=EMBEDDINGS_DEPLOYMENT_NAME,
@@ -433,12 +442,24 @@ embedding_llm = LangchainEmbedding(
         openai_api_key=azure_api_key,
         openai_api_base=azure_api_base,
         openai_api_type=azure_api_type,
-        openai_api_version=azure_api_version,
+        openai_api_version=azure_embeddingapi_version,
         chunk_size=16,
         max_retries=3,
     ),
     embed_batch_size=1,
 )
+
+prompt_helper = PromptHelper(max_input_size, num_output, max_chunk_overlap_ratio)
+text_splitter = SentenceSplitter(
+    separator=" ",
+    chunk_size=chunk_size,
+    chunk_overlap=20,
+    paragraph_separator="\n\n\n",
+    secondary_chunking_regex="[^,.;。]+[,.;。]?",
+    tokenizer=tiktoken.encoding_for_model("gpt-35-turbo").encode
+)
+node_parser = SimpleNodeParser(text_splitter=text_splitter)
+
 service_context = ServiceContext.from_defaults(
     llm=llm,
     embed_model=embedding_llm,
@@ -448,6 +469,7 @@ service_context = ServiceContext.from_defaults(
     node_parser=node_parser,
 )
 set_global_service_context(service_context)
+
 sum_template = (
     "You are a world-class text summarizer connected to the internet. We have provided context information below from the internet below. \n"
     "---------------------\n"
@@ -481,9 +503,9 @@ system_prompt = [{
     "content": "You are a helpful and super-intelligent voice assistant, that accurately answers user queries. Be accurate, helpful, concise, and clear."
 }]
 temperature = 0.5
-max_tokens = 420
+max_tokens = 1024
 
-model_names = ["WIZARDVICUNA7B", "PALM", "OPENAI", "COHERE"]
+model_names = ["WIZARDVICUNA7B", "PALM", "GPT4", "GPT35TURBO", "COHERE"]
 model_index = 0
 model_name = model_names[model_index]
 
