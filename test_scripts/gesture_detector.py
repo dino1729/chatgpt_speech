@@ -11,7 +11,15 @@ video = cv2.VideoCapture(0)
 
 # Create a image segmenter instance with the live stream mode:
 def print_result(result: GestureRecognizerResult, output_image: mp.Image, timestamp_ms: int):
-    print(result.gestures)
+    if result.gestures:
+        for gesture in result.gestures:
+            category_name = getattr(gesture, 'category_name', None)
+            if category_name:
+                print(category_name)
+            else:
+                print("No category name available")
+    else:
+        print("No gestures detected")
 
 options = GestureRecognizerOptions(
     base_options=BaseOptions(model_asset_path='./gesture_recognizer.task'),
@@ -24,11 +32,9 @@ with GestureRecognizer.create_from_options(options) as recognizer:
     while video.isOpened(): 
         # Capture frame-by-frame
         ret, frame = video.read()
-
         if not ret:
             print("Ignoring empty frame")
             break
-
         timestamp += 1
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
         recognizer.recognize_async(mp_image, timestamp)
