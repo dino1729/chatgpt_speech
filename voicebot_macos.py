@@ -10,7 +10,6 @@ import tiktoken
 import time
 import json
 import dotenv
-
 from bs4 import BeautifulSoup
 from newspaper import Article
 from langchain.embeddings import OpenAIEmbeddings
@@ -280,6 +279,32 @@ def text_to_speech(text, output_path, language, model_name):
             audio_file.write(audio_data)
             print("Speech synthesized and saved to WAV file.")
 
+def local_text_to_speech(text, output_path, model_name):
+    
+    url = "http://192.168.254.202:8000/generate"
+    payload = json.dumps({
+      "speaker_name": model_name,
+      "input_text": text,
+      "emotion": "Angry",
+      "speed": 1.5
+    })
+    headers = {
+      'Content-Type': 'application/json'
+    }
+    response = requests.request("POST", url, headers=headers, data=payload)
+    if response.status_code == 200:
+        audio_content = response.content
+        # Save the audio to a file
+        with open(output_path, "wb") as audio_file:
+            audio_file.write(audio_content)
+        print("Speech synthesized and saved to MP3 file.")
+        # Load the audio file and play it
+        data, samplerate = sf.read(output_path)
+        sd.play(data, samplerate)
+        sd.wait()
+    else:
+        print("Error:", response.text)
+
 def translate_text(text, target_language):
     
     # Add your key and endpoint
@@ -500,12 +525,12 @@ This script transcribes the native audio file to english language, sends this en
 
 system_prompt = [{
     "role": "system",
-    "content": "You are a helpful and super-intelligent voice assistant, that accurately answers user queries. Be accurate, helpful, concise, and clear."
+    "content": "You're Rick Sanchez. You act, respond and answer like Rick Sanchez. You use the tone, manner and vocabulary Rick Sanchez would use. Do not write any explanations. Only answer like Rick Sanchez. You must know all of the knowledge of Rick Sanchez"
 }]
 temperature = 0.5
 max_tokens = 1024
 
-model_names = ["WIZARDVICUNA7B", "PALM", "GPT4", "GPT35TURBO", "COHERE"]
+model_names = ["GPT35TURBO", "PALM", "GPT4", "COHERE", "WIZARDVICUNA7B"]
 model_index = 0
 model_name = model_names[model_index]
 
@@ -595,10 +620,12 @@ try:
 
             try:
                 translated_message = translate_text(assistant_reply, detected_audio_language)
-                text_to_speech(translated_message, tts_output_path, detected_audio_language, model_name)
+                #text_to_speech(translated_message, tts_output_path, detected_audio_language, model_name)
+                local_text_to_speech(translated_message, tts_output_path, "ricksanchez")
             except Exception as e:
                 print("Translation error:", str(e))
-                text_to_speech("Sorry, I couldn't answer that.", tts_output_path, "en-US", model_name)
+                #text_to_speech("Sorry, I couldn't answer that.", tts_output_path, "en-US", model_name)
+                local_text_to_speech("Sorry, I couldn't answer that.", tts_output_path, "ricksanchez")
                 continue
 
             # Delete the audio files
