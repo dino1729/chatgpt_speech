@@ -695,38 +695,102 @@ tipIds=[4,8,12,16,20]
 # Main loop
 try:
     while True:
+        
+        # Check if it's time to reset the conversation based on token count or inactivity
         if len(encoding.encode(json.dumps(str(conversation)))) > max_token_count or time.time() - last_activity_time > max_timeout:
-            reset_conversation()
+            conversation = system_prompt.copy()  # Reset the conversation to the default
+            print("Conversation reset. Changing Model...") 
+            # Increment the model index
+            model_index = (model_index + 1) % len(model_names)
+            # Get the current model name
+            model_name = model_names[model_index]
+            print("Swapped to model:", model_name)       
 
-        start_stop_recording()
+        print("Press the button to start/stop recording...")
 
+        # Update the last activity time
         last_activity_time = time.time()
 
-        # if detect_hand_landmarks():
-        #     recording = not recording
-        #     break
+        # Wait for the button press
+        GPIO.wait_for_edge(BUTTON_PIN, GPIO.RISING)
+        # Add a debounce delay
+        time.sleep(0.2)
+        # Toggle the recording state
+        recording = not recording
 
         if recording:
-            start_recording()
+            print("Recording started...")
+            # Start recording audio
+            recording_data = sd.rec(int(8 * 44100), samplerate=44100, channels=1)
+            # Turn on the LED
+            with Leds() as leds:
+                leds.update(Leds.rgb_on(Color.RED))
+
         else:
-            stop_recording()
+            print("Recording stopped. Processing audio...")
+            # Turn off the LED
+            with Leds() as leds:
+                leds.update(Leds.rgb_off())
+            sd.stop()
+            sf.write(audio_path, recording_data, 44100, 'PCM_16')
+            # Turn on Green LED breathing pattern to indicate processing
+            with Leds() as leds:
+                leds.pattern = Pattern.breathe(1000)
+                leds.update(Leds.rgb_pattern(Color.GREEN))
+            # Transcribe Telugu/Hindi audio to English text using Azure Speech Recognition
+            try:
+                english_text, detected_audio_language = transcribe_audio(audio_path)
+                print("You: {}; Language {}".format(english_text, detected_audio_language))
+                new_message = {"role": "user", "content": english_text}
+                conversation.append(new_message)
+            except Exception as e:
+                print("Transcription error:", str(e))
+                continue # Skip the rest of the loop and start recording again
 
-        # Turn on the LEDs with Green breathing pattern to indicate processing
-        with Leds() as leds:
-            leds.pattern = Pattern.breathe(1000)
-            leds.update(Leds.rgb_pattern(Color.GREEN))
-            if not transcribe_audio_to_text():
+            # Generate a response using the selected model
+            try:
+                # Check if the user's query contains any of the keywords
+                if any(keyword in english_text.lower() for keyword in keywords):
+                    model_name = "BING+OPENAI"
+                    # Check if the user's query contains the word "news"
+                    if "news" in english_text.lower():
+                        assistant_reply = get_bing_news_results(english_text)
+                    # Check if the user's query contains the word "weather"
+                    elif "weather" in english_text.lower():
+                        assistant_reply = get_weather_data(english_text)
+                    else:
+                        assistant_reply = get_bing_results(english_text)
+                else:
+                    # Set the model name to the selected model
+                    model_name = model_names[model_index]
+                    # Generate a response using the selected model
+                    assistant_reply = generate_chat(model_name, conversation, temperature, max_tokens)
+                print("{} Bot: {}".format(model_name, assistant_reply))
+                new_assistant_message = {"role": "assistant", "content": assistant_reply}
+                conversation.append(new_assistant_message)
+            except Exception as e:
+                print("Model error:", str(e))
+                continue  # Skip the rest of this loop iteration
+
+            try:
+                translated_message = translate_text(assistant_reply, detected_audio_language)
+                text_to_speech(translated_message, tts_output_path, detected_audio_language, model_name)
+            except Exception as e:
+                print("Translation error:", str(e))
+                text_to_speech("Sorry, I couldn't answer that.", tts_output_path, "en-US", model_name)
                 continue
-            if not generate_response():
+
+            # Delete the audio files
+            try:
+                os.remove(audio_path)
+                os.remove(tts_output_path)
+            except Exception as e:
+                print("Error deleting audio files:", str(e))
                 continue
-
-        # Turn on the LEDs with Blue breathing pattern to indicate talking
-        with Leds() as leds:
-            leds.pattern = Pattern.breathe(2000)
-            leds.update(Leds.rgb_pattern(Color.BLUE))
-            translate_and_speak()
-
-        delete_audio_files()
 
 except KeyboardInterrupt:
     print("\nScript terminated by user.")
+
+finally:
+    # Clean up GPIO
+    GPIO.cleanup()

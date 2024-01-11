@@ -9,6 +9,8 @@ import tiktoken
 import time
 import json
 import dotenv
+import logging
+import sys
 from openai import OpenAI
 from openai import AzureOpenAI as OpenAIAzure
 from bs4 import BeautifulSoup
@@ -389,6 +391,9 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
     else:
         return "Invalid model name"
 
+# Set up logging
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 # Get API key from environment variable
 dotenv.load_dotenv()
 cohere_api_key = os.environ["COHERE_API_KEY"]
@@ -611,12 +616,12 @@ try:
 
             try:
                 translated_message = translate_text(assistant_reply, detected_audio_language)
-                #text_to_speech(translated_message, tts_output_path, detected_audio_language, model_name)
-                local_text_to_speech(translated_message, tts_output_path, "ricksanchez")
+                text_to_speech(translated_message, tts_output_path, detected_audio_language, model_name)
+                #local_text_to_speech(translated_message, tts_output_path, "ricksanchez")
             except Exception as e:
                 print("Translation error:", str(e))
-                #text_to_speech("Sorry, I couldn't answer that.", tts_output_path, "en-US", model_name)
-                local_text_to_speech("Sorry, I couldn't answer that.", tts_output_path, "ricksanchez")
+                text_to_speech("Sorry, I couldn't answer that.", tts_output_path, "en-US", model_name)
+                #local_text_to_speech("Sorry, I couldn't answer that.", tts_output_path, "ricksanchez")
                 continue
 
             # Delete the audio files
