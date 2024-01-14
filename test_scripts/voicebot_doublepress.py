@@ -34,8 +34,6 @@ from llama_index.node_parser import SimpleNodeParser
 from llama_index.prompts import PromptTemplate
 from llama_index.agent import OpenAIAgent
 from llama_hub.tools.weather.base import OpenWeatherMapToolSpec
-import mediapipe as mp
-import cv2
 from aiy.leds import (Leds, Pattern, PrivacyLed, RgbLeds, Color)
 import random
 
@@ -376,94 +374,6 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
     else:
         return "Invalid model name"
 
-def reset_conversation():
-    """
-    Resets the conversation to the default and changes the model.
-    """
-    global conversation, model_index, model_name
-    conversation = system_prompt.copy()
-    print("Conversation reset. Changing Model...")
-    model_index = (model_index + 1) % len(model_names)
-    model_name = model_names[model_index]
-    print("Swapped to model:", model_name)
-
-def start_stop_recording():
-    """
-    Waits for a button press to start or stop recording.
-    """
-    global recording
-    print("Press the button to start/stop recording...")
-    GPIO.wait_for_edge(BUTTON_PIN, GPIO.RISING)
-    time.sleep(0.2)
-    recording = not recording
-
-def detect_hand_landmarks():
-    """
-    Detects hand landmarks using MediaPipe Hands.
-    """
-    with mp_hand.Hands(min_detection_confidence=0.9, min_tracking_confidence=0.9) as hands:
-        cap = cv2.VideoCapture(0)
-        while True:
-            ret, image = cap.read()
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            image.flags.writeable = False
-            results = hands.process(image)
-            image.flags.writeable = True
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            lmList = []
-            if results.multi_hand_landmarks:
-                for hand_landmark in results.multi_hand_landmarks:
-                    myHands = results.multi_hand_landmarks[0]
-                    for id, lm in enumerate(myHands.landmark):
-                        h, w, c = image.shape
-                        cx, cy = int(lm.x * w), int(lm.y * h)
-                        lmList.append([id, cx, cy])
-                    mp_draw.draw_landmarks(image, hand_landmark, mp_hand.HAND_CONNECTIONS)
-            fingers = []
-            if len(lmList) != 0:
-                if lmList[tipIds[0]][1] > lmList[tipIds[0] - 1][1]:
-                    fingers.append(1)
-                else:
-                    fingers.append(0)
-                for id in range(1, 5):
-                    if lmList[tipIds[id]][2] < lmList[tipIds[id] - 2][2]:
-                        fingers.append(1)
-                    else:
-                        fingers.append(0)
-                finger_counter = fingers.count(1)
-
-                if finger_counter == 2:
-                    time.sleep(0.5)
-                    print("Victory sign detected!")
-                    return True
-            else:
-                print("No hand landmarks detected")
-                continue
-        cap.release()
-        return False
-
-def start_recording():
-    """
-    Starts recording audio.
-    """
-    global recording_data
-    print("Recording started...")
-    with Leds() as leds:
-        if recording:
-            leds.update(Leds.rgb_on(Color.RED))
-            recording_data = sd.rec(int(8 * 44100), samplerate=44100, channels=1)
-        else:
-            leds.update(Leds.rgb_off())
-        
-def stop_recording():
-    """
-    Stops recording audio and processes it.
-    """
-    global recording_data
-    print("Recording stopped. Processing audio...")
-    sd.stop()
-    sf.write(audio_path, recording_data, 44100, 'PCM_16')
-
 def transcribe_audio_to_text():
     """
     Transcribes Telugu/Hindi audio to English text using Azure Speech Recognition.
@@ -514,16 +424,6 @@ def translate_and_speak():
     except Exception as e:
         print("Translation error:", str(e))
         text_to_speech("Sorry, I couldn't answer that.", tts_output_path, "en-US", model_name)
-
-def delete_audio_files():
-    """
-    Deletes the audio files.
-    """
-    try:
-        os.remove(audio_path)
-        os.remove(tts_output_path)
-    except Exception as e:
-        print("Error deleting audio files:", str(e))
 
 # Get API key from environment variable
 dotenv.load_dotenv()
