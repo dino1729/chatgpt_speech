@@ -663,7 +663,6 @@ qa_template = PromptTemplate(ques_template)
 '''
 This script transcribes the native audio file to english language, sends this english text to GPT-3 for completion, and then translates the completed english text back to the native language and generates the audio response.
 '''
-
 # Randomly select a model_index value from 0 to 3
 model_index = random.randint(0, 3)
 model_name = model_names[model_index]
@@ -681,6 +680,7 @@ last_activity_time = time.time()
 conversation = system_prompt.copy()
 
 recording = False
+prompt_printed = False  # Flag to control the printing of the prompt
 
 # Set up GPIO
 GPIO.setmode(GPIO.BCM)
@@ -699,14 +699,23 @@ try:
     while True:
         
         # Check if it's time to reset the conversation based on token count or inactivity
-        # ...
+        if len(encoding.encode(json.dumps(str(conversation)))) > max_token_count or time.time() - last_activity_time > max_timeout:
+            conversation = system_prompt.copy()  # Reset the conversation to the default
+            print("Conversation reset. Changing Model...") 
+            # Increment the model index
+            model_index = (model_index + 1) % len(model_names)
+            # Get the current model name
+            model_name = model_names[model_index]
+            print("Swapped to model:", model_name)
+            prompt_printed = False  # Allow prompt to be printed again after model swap
 
         # Update the last activity time
         last_activity_time = time.time()
 
         # Print the prompt only once at the start or after processing is done
-        if not recording:
+        if not recording and not prompt_printed:
             print("Press the button to start/stop recording...")
+            prompt_printed = True  # Set the flag to True after printing the prompt
 
         # Double press detection logic
         try:
@@ -738,6 +747,7 @@ try:
                 time.sleep(0.2)
                 # Toggle the recording state
                 recording = not recording
+                prompt_printed = False  # Reset the flag to allow prompt to be printed again after processing
 
                 if recording:
                     print("Recording started...")
