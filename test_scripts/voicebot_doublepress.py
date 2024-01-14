@@ -425,6 +425,24 @@ def translate_and_speak():
         print("Translation error:", str(e))
         text_to_speech("Sorry, I couldn't answer that.", tts_output_path, "en-US", model_name)
 
+def update_led(led_state, color=Color.WHITE, brightness=1.0):
+    # Ensure brightness is within the allowed range [0.0, 1.0]
+    brightness = max(0.0, min(brightness, 1.0))
+
+    # Scale the color values based on the brightness level
+    scaled_color = tuple(int(c * brightness) for c in color)
+
+    if led_state == 'ON':
+        leds.update(Leds.rgb_on(scaled_color))
+    elif led_state == 'OFF':
+        leds.update(Leds.rgb_off())
+    elif led_state == 'BLINK':
+        leds.pattern = Pattern.blink(100)
+        leds.update(Leds.rgb_pattern(scaled_color))
+    elif led_state == 'BREATHE':
+        leds.pattern = Pattern.breathe(1000)
+        leds.update(Leds.rgb_pattern(scaled_color))
+
 # Get API key from environment variable
 dotenv.load_dotenv()
 cohere_api_key = os.environ["COHERE_API_KEY"]
@@ -480,7 +498,7 @@ system_prompt = [{
 temperature = 0.5
 max_tokens = 1024
 
-model_names = ["GPT4", "GPT35TURBO", "GEMINI"]
+model_names = ["GPT4", "GPT35TURBO", "GEMINI", "COHERE"]
 model_index = 0
 model_name = model_names[model_index]
 
@@ -602,6 +620,10 @@ DOUBLE_PRESS_MAX_DELAY = 0.5  # Maximum delay between presses in seconds
 last_press_time = 0
 double_press_detected = False
 
+# Initialize the LEDs
+leds = Leds()
+update_led('ON', Color.CYAN, 0.1)  # Solid CYAN while idle
+
 # Main loop
 try:
     while True:
@@ -622,11 +644,12 @@ try:
 
         # Print the prompt only once at the start or after processing is done
         if not recording and not prompt_printed:
-            print("Press the button to start/stop recording...")
+            print("Press the button twice to start/stop recording...")
             prompt_printed = True  # Set the flag to True after printing the prompt
 
         # Double press detection logic
         try:
+
             # Wait for the first button press
             channel = GPIO.wait_for_edge(BUTTON_PIN, GPIO.RISING, timeout=1000)  # Using a timeout to prevent blocking
             if channel is None:
@@ -662,20 +685,15 @@ try:
                     # Start recording audio
                     recording_data = sd.rec(int(8 * 44100), samplerate=44100, channels=1)
                     # Turn on the LED
-                    with Leds() as leds:
-                        leds.update(Leds.rgb_on(Color.RED))
+                    update_led('ON', Color.RED, 0.75)  # Solid RED while recording
 
                 else:
                     print("Recording stopped. Processing audio...")
-                    # Turn off the LED
-                    with Leds() as leds:
-                        leds.update(Leds.rgb_off())
+                    #update_led('OFF')  # Turn off LED when idle
                     sd.stop()
                     sf.write(audio_path, recording_data, 44100, 'PCM_16')
                     # Turn on Green LED breathing pattern to indicate processing
-                    with Leds() as leds:
-                        leds.pattern = Pattern.breathe(1000)
-                        leds.update(Leds.rgb_pattern(Color.GREEN))
+                    update_led('BREATHE', Color.GREEN, 0.5)  # Green breathing pattern while processing
                     # Transcribe Telugu/Hindi audio to English text using Azure Speech Recognition
                     try:
                         english_text, detected_audio_language = transcribe_audio(audio_path)
@@ -713,7 +731,12 @@ try:
 
                     try:
                         translated_message = translate_text(assistant_reply, detected_audio_language)
+                        # Turn off Green processing LED state
+                        update_led('OFF')  # Turn off LED briefly
+                        # Turn on Blue processing LED state
+                        update_led('BLINK', Color.BLUE, 0.1)  # Blue Blinking pattern while processing
                         text_to_speech(translated_message, tts_output_path, detected_audio_language, model_name)
+                        update_led('ON', Color.CYAN, 0.1)  # Solid CYAN while idle
                     except Exception as e:
                         print("Translation error:", str(e))
                         text_to_speech("Sorry, I couldn't answer that.", tts_output_path, "en-US", model_name)
@@ -734,6 +757,8 @@ try:
 
 except KeyboardInterrupt:
     print("\nScript terminated by user.")
+
 finally:
     # Clean up GPIO
     GPIO.cleanup()
+    update_led('OFF')  # Turn off LED when idle
