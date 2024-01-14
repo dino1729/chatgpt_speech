@@ -2,6 +2,7 @@ import os
 import azure.cognitiveservices.speech as speechsdk
 import cohere
 import google.generativeai as palm
+import google.generativeai as genai
 import sounddevice as sd
 import soundfile as sf
 import requests, uuid
@@ -317,7 +318,7 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
     
     elif model_name == "PALM":
 
-        palm.configure(api_key=google_palm_api_key)
+        palm.configure(api_key=google_api_key)
         response = palm.chat(
             model="models/chat-bison-001",
             messages=str(conversation).replace("'", '"'),
@@ -325,6 +326,13 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
         )
         return response.last
     
+    elif model_name == "GEMINI":
+        
+        genai.configure(api_key=google_api_key)
+        gemini = genai.GenerativeModel('gemini-pro')
+        response = gemini.generate_content(str(conversation).replace("'", '"'))
+        return response.text
+
     elif model_name == "GPT4":
 
         response = client.chat.completions.create(
@@ -520,7 +528,7 @@ def delete_audio_files():
 # Get API key from environment variable
 dotenv.load_dotenv()
 cohere_api_key = os.environ["COHERE_API_KEY"]
-google_palm_api_key = os.environ["GOOGLE_PALM_API_KEY"]
+google_api_key = os.environ["GOOGLE_PALM_API_KEY"]
 azure_api_key = os.environ["AZURE_API_KEY"]
 azure_api_type = "azure"
 azure_api_base = os.environ.get("AZURE_API_BASE")
@@ -572,7 +580,7 @@ system_prompt = [{
 temperature = 0.5
 max_tokens = 1024
 
-model_names = ["GPT4", "GPT35TURBO", "COHERE", "PALM"]
+model_names = ["GPT4", "GPT35TURBO", "GEMINI"]
 model_index = 0
 model_name = model_names[model_index]
 

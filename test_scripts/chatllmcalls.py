@@ -1,4 +1,5 @@
 import cohere
+import google.generativeai as genai
 import google.generativeai as palm
 import openai
 import os
@@ -7,7 +8,7 @@ import dotenv
 # Get API keys from environment variables
 dotenv.load_dotenv()
 cohere_api_key = os.environ["COHERE_API_KEY"]
-google_palm_api_key = os.environ["GOOGLE_PALM_API_KEY"]
+google_api_key = os.environ["GOOGLE_PALM_API_KEY"]
 azure_api_key = os.environ["AZURE_API_KEY"]
 
 def generate_chat(model_name, conversation, temperature, max_tokens):
@@ -23,20 +24,25 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
     if model_name == "cohere_chat":
         co = cohere.Client(cohere_api_key)
         response = co.chat(
-            model='ccommand-nightly',
+            model='command-nightly',
             message=str(conversation).replace("'", '"'),
             temperature=temperature,
             max_tokens=max_tokens,
         )
         return response.text
     elif model_name == "palm":
-        palm.configure(api_key=google_palm_api_key)
+        palm.configure(api_key=google_api_key)
         response = palm.chat(
             model="models/chat-bison-001",
             messages=str(conversation).replace("'", '"'),
             temperature=temperature,
         )
         return response.last
+    elif model_name == "gemini":
+        genai.configure(api_key=google_api_key)
+        gemini = genai.GenerativeModel('gemini-pro')
+        response = gemini.generate_content(str(conversation).replace("'", '"'))
+        return response.text
     elif model_name == "openai":
         openai.api_type = "azure"
         openai.api_base = os.getenv("AZURE_API_BASE")
@@ -98,7 +104,7 @@ try:
         new_message = {"role": "user", "content": user_text}
         conversation.append(new_message)
 
-        model_name = input("\nEnter the model name (cohere/cohere_chat/palm/openai/llama2/gpt4all/wizardlm): ")
+        model_name = input("\nEnter the model name (cohere/cohere_chat/palm/gemini/openai/llama2/gpt4all/wizardlm): ")
         
         try:
             assistant_reply = generate_chat(model_name, conversation, temperature, max_tokens)
