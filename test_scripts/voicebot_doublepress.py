@@ -699,19 +699,14 @@ try:
     while True:
         
         # Check if it's time to reset the conversation based on token count or inactivity
-        if len(encoding.encode(json.dumps(str(conversation)))) > max_token_count or time.time() - last_activity_time > max_timeout:
-            conversation = system_prompt.copy()  # Reset the conversation to the default
-            print("Conversation reset. Changing Model...") 
-            # Increment the model index
-            model_index = (model_index + 1) % len(model_names)
-            # Get the current model name
-            model_name = model_names[model_index]
-            print("Swapped to model:", model_name)       
-
-        print("Press the button to start/stop recording...")
+        # ...
 
         # Update the last activity time
         last_activity_time = time.time()
+
+        # Print the prompt only once at the start or after processing is done
+        if not recording:
+            print("Press the button to start/stop recording...")
 
         # Double press detection logic
         try:
