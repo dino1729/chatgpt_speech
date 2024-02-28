@@ -6,3 +6,5 @@ test_scripts/data
 test_scripts/gesture_recognizer.task
 data/
 .venv
+__pycache__
+config.yml

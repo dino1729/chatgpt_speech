@@ -1,8 +1,8 @@
 import openai
 import os
-from llama_index.llms import AzureOpenAI
-from llama_index.tools import FunctionTool
-from llama_index.agent import ReActAgent
+from llama_index.llms.azure_openai import AzureOpenAI
+from llama_index.core.tools import FunctionTool
+from llama_index.core.agent import ReActAgent
 import dotenv
 
 # Get API keys from environment variables

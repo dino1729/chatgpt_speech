@@ -1,12 +1,13 @@
 import openai
 import os
 import dotenv
-from llama_index.agent import OpenAIAgent
-from llama_index.llms import AzureOpenAI
-from llama_index.tools.tool_spec.load_and_search.base import LoadAndSearchToolSpec
-from llama_hub.tools.google_search.base import GoogleSearchToolSpec
-from llama_hub.tools.weather.base import OpenWeatherMapToolSpec
-from llama_index import LangchainEmbedding, ServiceContext, set_global_service_context
+from llama_index.agent.openai import OpenAIAgent
+from llama_index.llms.azure_openai import AzureOpenAI
+from llama_index.core.tools.tool_spec.load_and_search.base import LoadAndSearchToolSpec
+from llama_index.tools.google import GoogleSearchToolSpec
+from llama_index.tools.weather import OpenWeatherMapToolSpec
+from llama_index.embeddings.langchain import LangchainEmbedding
+from llama_index.core import ServiceContext, set_global_service_context
 from langchain.embeddings import OpenAIEmbeddings
 
 # Get API keys from environment variables

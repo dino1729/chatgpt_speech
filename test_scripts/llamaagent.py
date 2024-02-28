@@ -1,10 +1,10 @@
 import openai
 import os
 import dotenv
-from llama_index.agent import OpenAIAgent
-from llama_index.llms import AzureOpenAI
-from llama_hub.tools.bing_search.base import BingSearchToolSpec
-from llama_hub.tools.azure_translate.base import AzureTranslateToolSpec
+from llama_index.agent.openai import OpenAIAgent
+from llama_index.llms.azure_openai import AzureOpenAI
+from llama_index.tools.bing_search import BingSearchToolSpec
+from llama_index.tools.azure_translate import AzureTranslateToolSpec
 
 # Get API keys from environment variables
 dotenv.load_dotenv()

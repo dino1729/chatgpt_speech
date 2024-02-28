@@ -15,25 +15,17 @@ from openai import OpenAI
 from openai import AzureOpenAI as OpenAIAzure
 from bs4 import BeautifulSoup
 from newspaper import Article
-from llama_index.embeddings import AzureOpenAIEmbedding
-from llama_index.llms import AzureOpenAI
-from llama_index import (
-    VectorStoreIndex,
-    SummaryIndex,
-    PromptHelper,
-    SimpleDirectoryReader,
-    ServiceContext,
-    get_response_synthesizer,
-    set_global_service_context,
-)
-from llama_index.retrievers import VectorIndexRetriever
-from llama_index.query_engine import RetrieverQueryEngine
-from llama_index.indices.postprocessor import SimilarityPostprocessor
-from llama_index.text_splitter import SentenceSplitter
-from llama_index.node_parser import SimpleNodeParser
-from llama_index.prompts import PromptTemplate
-from llama_index.agent import OpenAIAgent
-from llama_hub.tools.weather.base import OpenWeatherMapToolSpec
+from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
+from llama_index.llms.azure_openai import AzureOpenAI
+from llama_index.core import VectorStoreIndex, SummaryIndex, PromptHelper, SimpleDirectoryReader, ServiceContext, get_response_synthesizer, set_global_service_context
+from llama_index.core.retrievers import VectorIndexRetriever
+from llama_index.core.query_engine import RetrieverQueryEngine
+from llama_index.core.postprocessor import SimilarityPostprocessor
+from llama_index.core.node_parser import SentenceSplitter
+from llama_index.core.node_parser import SimpleNodeParser
+from llama_index.core import PromptTemplate
+from llama_index.agent.openai import OpenAIAgent
+from llama_index.tools.weather import OpenWeatherMapToolSpec
 import mediapipe as mp
 import cv2
 from aiy.leds import (Leds, Pattern, PrivacyLed, RgbLeds, Color)

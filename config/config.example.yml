@@ -1,0 +1,58 @@
+
+azure_api_key: ""
+azure_api_base: ""
+azure_chatapi_version: ""
+azure_embeddingapi_version: ""
+
+azure_gpt4_deploymentid: ""
+openai_gpt4_modelname: ""
+azure_gpt35_deploymentid: ""
+openai_gpt35_modelname: ""
+azure_embedding_deploymentid: ""
+openai_embedding_modelname: ""
+
+llama2_api_key: ""
+llama2_api_base: ""
+
+rvctts_api_base: ""
+
+# Supabase
+public_supabase_url: ""
+supabase_service_role_key: ""
+
+# Pinecone
+pinecone_api_key: ""
+pinecone_environment: ""
+
+# Bing Search
+bing_api_key: ""
+bing_endpoint: ""
+
+# PALM
+google_api_key: ""
+gemini_model_name: ""
+
+# Cohere
+cohere_api_key: ""
+
+# weather agent
+openweather_api_key: ""
+
+azurespeechkey: ""
+azurespeechregion: ""
+azuretexttranslatorkey: ""
+
+paths:
+  UPLOAD_FOLDER: ""
+  BING_FOLDER: ""
+  SUMMARY_FOLDER: ""
+  VECTOR_FOLDER: ""
+
+settings:
+  temperature: 0.25
+  max_tokens: 420
+  model_name: ""
+  num_output: 1024
+  max_chunk_overlap_ratio: 0.1
+  max_input_size: 128000
+  context_window: 128000

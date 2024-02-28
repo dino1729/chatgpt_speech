@@ -1,10 +1,10 @@
 import openai
 import os
-from llama_index.llms import AzureOpenAI
-from llama_hub.tools.wikipedia.base import WikipediaToolSpec
-from llama_index.agent import OpenAIAgent
+from llama_index.llms.azure_openai import AzureOpenAI
+from llama_index.tools.wikipedia import WikipediaToolSpec
+from llama_index.agent.openai import OpenAIAgent
 from langchain.embeddings import OpenAIEmbeddings
-from llama_index import LangchainEmbedding
+from llama_index.embeddings.langchain import LangchainEmbedding
 import dotenv
 
 dotenv.load_dotenv()
