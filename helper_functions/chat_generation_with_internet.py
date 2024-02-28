@@ -34,6 +34,7 @@ azure_chatapi_version = config.azure_chatapi_version
 azure_gpt4_deploymentid = config.azure_gpt4_deploymentid
 openai_gpt4_modelname = config.openai_gpt4_modelname
 azure_gpt35_deploymentid = config.azure_gpt35_deploymentid
+openai_gpt35_modelname = config.openai_gpt35_modelname
 azure_embedding_deploymentid = config.azure_embedding_deploymentid
 openai_embedding_modelname = config.openai_embedding_modelname
 
@@ -47,8 +48,8 @@ context_window = config.context_window
 keywords = config.keywords
 
 llm = AzureOpenAI(
-    deployment_name=azure_gpt4_deploymentid, 
-    model=openai_gpt4_modelname,
+    deployment_name=azure_gpt35_deploymentid, 
+    model=openai_gpt35_modelname,
     api_key=azure_api_key,
     azure_endpoint=azure_api_base,
     api_version=azure_chatapi_version,

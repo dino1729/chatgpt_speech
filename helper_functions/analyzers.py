@@ -66,8 +66,8 @@ client = OpenAIAzure(
 )
 
 llm = AzureOpenAI(
-    deployment_name=azure_gpt4_deploymentid, 
-    model=openai_gpt4_modelname,
+    deployment_name=azure_gpt35_deploymentid, 
+    model=openai_gpt35_modelname,
     api_key=azure_api_key,
     azure_endpoint=azure_api_base,
     api_version=azure_chatapi_version,
