@@ -12,7 +12,6 @@ from newspaper import Article
 from bs4 import BeautifulSoup
 from llama_index.core.retrievers import VectorIndexRetriever
 from llama_index.core.query_engine import RetrieverQueryEngine
-from llama_index.core.postprocessor import SimilarityPostprocessor
 from llama_index.core import PromptTemplate
 from llama_index.core.node_parser import SemanticSplitterNodeParser
 from llama_index.core import VectorStoreIndex, SummaryIndex, PromptHelper, SimpleDirectoryReader, ServiceContext, get_response_synthesizer, set_global_service_context
