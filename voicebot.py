@@ -134,7 +134,10 @@ try:
                     # Transcribe Telugu/Hindi audio to English text using Azure Speech Recognition
                     english_text, detected_audio_language = transcribe_audio_to_text(audio_path)
                     assistant_reply = generate_response(english_text, conversation, model_name, max_tokens, temperature)
+                    update_led('OFF')
+                    update_led('BLINK', Color.BLUE, 0.1)
                     translate_and_speak(assistant_reply, detected_audio_language, tts_output_path, model_name)
+                    update_led('ON', Color.CYAN, 0.1)
                     try:
                         os.remove(audio_path)
                         os.remove(tts_output_path)
