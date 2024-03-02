@@ -27,6 +27,7 @@ struct
 webrtcvad
 wave
 cohere
+groq
 google.generativeai
 supabase
 whisper

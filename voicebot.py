@@ -40,7 +40,7 @@ temperature = config.temperature
 max_tokens = config.max_tokens
 
 # Randomly select a model_index value from 0 to 3
-model_names = ["GPT35TURBO", "GPT4", "GEMINI", "COHERE"]
+model_names = ["GROQ_MIXTRAL", "GROQ_LLAMA", "GPT35TURBO", "GPT4", "GEMINI", "COHERE"]
 model_index = random.randint(0, 3)
 model_name = model_names[model_index]
 print("Starting with model:", model_name)
