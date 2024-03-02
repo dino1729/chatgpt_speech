@@ -31,6 +31,7 @@ bing_endpoint: ""
 # PALM
 google_api_key: ""
 gemini_model_name: ""
+groq_api_key: ""
 
 # Cohere
 cohere_api_key: ""
