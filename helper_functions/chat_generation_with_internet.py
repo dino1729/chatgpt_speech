@@ -257,12 +257,15 @@ def internet_connected_chatbot(query, history, model_name, max_tokens, temperatu
     
     assistant_reply = "Sorry, I couldn't generate a response. Please try again."
     try:
-        # Set the initial conversation to the default system prompt
-        conversation = system_prompt.copy()
-        for human, assistant in history:
-            conversation.append({"role": "user", "content": human})
-            conversation.append({"role": "assistant", "content": assistant})
-        conversation.append({"role": "user", "content": query})
+        # Set the initial conversation to the default system prompt if the history is empty
+        if not history:
+            conversation = system_prompt.copy()
+            for human, assistant in history:
+                conversation.append({"role": "user", "content": human})
+                conversation.append({"role": "assistant", "content": assistant})
+            conversation.append({"role": "user", "content": query})
+        else:
+            conversation = history.copy()
 
         try:
             # If the query contains any of the keywords, perform a Bing search

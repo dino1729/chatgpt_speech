@@ -56,8 +56,12 @@ try:
             sd.stop()
             sf.write(audio_path, recording_data, 44100, 'PCM_16')
             english_text, detected_audio_language = transcribe_audio_to_text(audio_path)
+            new_message = {"role": "user", "content": english_text}
+            conversation.append(new_message)
             assistant_reply = generate_response(english_text, conversation, model_name, max_tokens, temperature)
             translate_and_speak(assistant_reply, detected_audio_language, tts_output_path, model_name)
+            new_assistant_message = {"role": "assistant", "content": assistant_reply}
+            conversation.append(new_assistant_message)
 
             # Delete the audio files
             try:

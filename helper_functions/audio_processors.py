@@ -158,8 +158,6 @@ def generate_response(english_text, conversation, model_name, max_tokens, temper
     try:
         assistant_reply = internet_connected_chatbot(english_text, conversation, model_name, max_tokens, temperature)
         print("{} Bot: {}".format(model_name, assistant_reply))
-        new_assistant_message = {"role": "assistant", "content": assistant_reply}
-        conversation.append(new_assistant_message)
     except Exception as e:
         print("Model error:", str(e))
         pass
