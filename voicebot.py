@@ -133,7 +133,11 @@ try:
                     update_led('BREATHE', Color.GREEN, 0.5)  # Green breathing pattern while processing
                     # Transcribe Telugu/Hindi audio to English text using Azure Speech Recognition
                     english_text, detected_audio_language = transcribe_audio_to_text(audio_path)
+                    new_message = {"role": "user", "content": english_text}
+                    conversation.append(new_message)
                     assistant_reply = generate_response(english_text, conversation, model_name, max_tokens, temperature)
+                    new_assistant_message = {"role": "assistant", "content": assistant_reply}
+                    conversation.append(new_assistant_message)
                     update_led('OFF')
                     update_led('BLINK', Color.BLUE, 0.1)
                     translate_and_speak(assistant_reply, detected_audio_language, tts_output_path, model_name)
