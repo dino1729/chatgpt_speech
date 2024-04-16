@@ -30,7 +30,7 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
 
         co = cohere.Client(cohere_api_key)
         response = co.generate(
-            model='command-nightly',
+            model='command-r-plus',
             prompt=str(conversation).replace("'", '"'),
             temperature=temperature,
             max_tokens=max_tokens,

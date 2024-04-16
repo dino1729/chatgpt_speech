@@ -10,15 +10,16 @@ googlesearch
 newspaper3k
 llama-hub==0.0.79.post1
 llama-index-llms-azure-openai
+llama-index-readers-file
+llama-index-readers-llama-parse
 llama-index-embeddings-azure-openai
 llama-index-agent-openai
 llama-index-tools-bing-search
 llama-index-tools-weather
 llama-index-tools-google
-llama-index-llms-azure-openai
 llama-index-tools-wikipedia
 pyowm
-llama-index==0.10.13.post1
+llama-index==0.10.29
 langchain>=0.0.329
 mediapipe
 pvporcupine
@@ -37,3 +38,4 @@ moviepy
 ffmpeg-python
 pytube
 pinecone-client
+lxml_html_clean

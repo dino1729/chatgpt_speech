@@ -8,7 +8,8 @@ from newspaper import Article
 import openai
 from langchain.embeddings import OpenAIEmbeddings
 from llama_index.llms.azure_openai import AzureOpenAI
-from llama_index.core import VectorStoreIndex, SummaryIndex, PromptHelper, SimpleDirectoryReader, ServiceContext, get_response_synthesizer, set_global_service_context
+from llama_index.core import VectorStoreIndex, PromptHelper, SimpleDirectoryReader, ServiceContext, get_response_synthesizer, set_global_service_context
+from llama_index.core.indices import SummaryIndex
 from llama_index.embeddings.langchain import LangchainEmbedding
 from llama_index.core.retrievers import VectorIndexRetriever
 from llama_index.core.query_engine import RetrieverQueryEngine

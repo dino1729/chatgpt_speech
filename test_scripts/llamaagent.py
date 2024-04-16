@@ -2,7 +2,7 @@ import openai
 import os
 import dotenv
 from llama_index.agent.openai import OpenAIAgent
-from llama_index.llms.azure_openai import AzureOpenAI
+from llama_index.embeddings.azure_openai import AzureOpenAI
 from llama_index.tools.bing_search import BingSearchToolSpec
 from llama_index.tools.azure_translate import AzureTranslateToolSpec
 
