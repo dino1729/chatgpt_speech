@@ -1,3 +1,4 @@
+from re import A
 import smtplib
 from datetime import datetime
 from email.mime.text import MIMEText
@@ -12,7 +13,8 @@ azure_api_key = config.azure_api_key
 azure_api_base = config.azure_api_base
 azure_chatapi_version = config.azure_chatapi_version
 azure_chatapi_version = config.azure_chatapi_version
-azure_gpt35_deploymentid = config.azure_gpt35_deploymentid
+# azure_gpt35_deploymentid = config.azure_gpt35_deploymentid
+azure_gpt4_deploymentid = config.azure_gpt4_deploymentid
 
 yahoo_id = config.yahoo_id
 yahoo_app_password = config.yahoo_app_password
@@ -36,7 +38,7 @@ def generate_gpt_response(user_message):
     conversation = system_prompt.copy()
     conversation.append({"role": "user", "content": str(user_message)})
     response = client.chat.completions.create(
-        model=azure_gpt35_deploymentid,
+        model=azure_gpt4_deploymentid,
         messages=conversation,
         max_tokens=1024,
         temperature=0.3,
@@ -153,9 +155,9 @@ if __name__ == "__main__":
     news_update_subject = "News Updates 📰"
     technews = "Latest news in technology"
     news_update_tech = internet_connected_chatbot(technews, [], model_name, max_tokens, temperature)
-    usanews = "Latest news in the USA"
+    usanews = "Latest news in Financial Markets"
     news_update_usa = internet_connected_chatbot(usanews, [], model_name, max_tokens, temperature)
-    india_news = "Latest news in India"
+    india_news = "Latest news from India"
     news_update_india = internet_connected_chatbot(india_news, [], model_name, max_tokens, temperature)
 
     # Collate all news updates and send them in an email after processing them with gpt
@@ -165,7 +167,7 @@ if __name__ == "__main__":
     Tech News Update:
     {news_update_tech}
 
-    USA News Update:
+    Financial Markets News Update:
     {news_update_usa}
 
     India News Update:
