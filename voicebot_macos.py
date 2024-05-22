@@ -6,6 +6,7 @@ import time
 import json
 import logging
 import sys
+import random
 from config import config
 from helper_functions.audio_processors import transcribe_audio_to_text, generate_response, translate_and_speak
 
@@ -16,7 +17,7 @@ temperature = config.temperature
 max_tokens = config.max_tokens
 
 model_names = ["GROQ_MIXTRAL", "GROQ_LLAMA", "GPT35TURBO", "GPT4", "GEMINI", "COHERE"]
-model_index = 0
+model_index = random.randint(0, len(model_names) - 1)
 model_name = model_names[model_index]
 
 audio_path = "user_audio.wav"

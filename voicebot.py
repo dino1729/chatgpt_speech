@@ -39,9 +39,9 @@ logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 temperature = config.temperature
 max_tokens = config.max_tokens
 
-# Randomly select a model_index value from 0 to 3
+# Randomly select a model_index value from the list of model names
 model_names = ["GROQ_MIXTRAL", "GROQ_LLAMA", "GPT35TURBO", "GPT4", "GEMINI", "COHERE"]
-model_index = random.randint(0, 3)
+model_index = random.randint(0, len(model_names) - 1)
 model_name = model_names[model_index]
 print("Starting with model:", model_name)
 

@@ -7,6 +7,7 @@ from pyowm import OWM
 from config import config
 from helper_functions.chat_generation_with_internet import internet_connected_chatbot
 from helper_functions.audio_processors import text_to_speech_nospeak
+import random
 
 azure_api_key = config.azure_api_key
 azure_api_base = config.azure_api_base
@@ -21,7 +22,10 @@ pyowm_api_key = config.pyowm_api_key
 
 temperature = config.temperature
 max_tokens = config.max_tokens
-model_name = config.model_name
+
+model_names = ["BING+OPENAI", "GPT35TURBO", "GPT4", "GEMINI", "COHERE", "MIXTRAL8x7B"]
+model_index = random.randint(0, len(model_names) - 1)
+model_name = model_names[model_index]
 
 def generate_gpt_response(user_message):
     client = OpenAIAzure(
@@ -157,7 +161,7 @@ if __name__ == "__main__":
 
     # Convert the year progress report to speech
     yearprogress_tts_output_path = "year_progress_report.mp3"
-    text_to_speech_nospeak(gpt_message, yearprogress_tts_output_path)
+    text_to_speech_nospeak(gpt_message, yearprogress_tts_output_path, model_name=model_name)
 
     # News Updates
     news_update_subject = "News Updates 📰"
@@ -193,7 +197,7 @@ if __name__ == "__main__":
 
     # Convert the news updates to speech
     news_tts_output_path = "news_update_report.mp3"
-    text_to_speech_nospeak(news_gpt_response, news_tts_output_path)
+    text_to_speech_nospeak(news_gpt_response, news_tts_output_path, model_name=model_name)
 
 
 

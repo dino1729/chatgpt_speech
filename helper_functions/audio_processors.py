@@ -54,7 +54,7 @@ def text_to_speech(text, output_path, language, model_name):
     else:
         # Use a default voice if the language is not specified or unsupported
         default_voice = "en-US-AriaNeural"
-        if model_name == "PALM":
+        if model_name == "GEMINI":
             speech_config.speech_synthesis_voice_name = "en-US-JaneNeural"
         elif model_name == "GPT4":
             speech_config.speech_synthesis_voice_name = "en-US-BlueNeural"
@@ -91,7 +91,7 @@ def text_to_speech_nospeak(text, output_path, language="en-US", model_name="GPT3
     else:
         # Use a default voice if the language is not specified or unsupported
         default_voice = "en-US-AriaNeural"
-        if model_name == "PALM":
+        if model_name == "GEMINI":
             speech_config.speech_synthesis_voice_name = "en-US-JaneNeural"
         elif model_name == "GPT4":
             speech_config.speech_synthesis_voice_name = "en-US-BlueNeural"
