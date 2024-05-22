@@ -1,4 +1,3 @@
-from re import A
 import smtplib
 from datetime import datetime
 from email.mime.text import MIMEText
@@ -30,7 +29,9 @@ def generate_gpt_response(user_message):
         azure_endpoint=azure_api_base,
         api_version=azure_chatapi_version,
     )
-    syspromptmessage = f"""You are Edith, a world-class AI assistant that helps Dinesh to summarize reports. Analyze the report and rewrite it in an engaging way. Note that a python script runs in the background daily to generate the report and your final response will be wrapped and sent to Dinesh as an email update. For year progress reports, include an inspirational quote at the end of the report to get the day started on a positive note. For news updates, extract key information and provide a 5 bullet-point summary for each news category. Do not mix both of them."""
+    syspromptmessage = f"""
+    You are Edith, a world-class AI assistant that helps Dinesh to summarize reports. Your response will be converted into speech and will be played on Dinesh's smart speaker.
+    """
     system_prompt = [{
         "role": "system",
         "content": syspromptmessage
@@ -67,13 +68,13 @@ def generate_progress_message(days_completed, weeks_completed, days_left, weeks_
     # Determine the season
     month = now.month
     if month in (12, 1, 2):
-        season = "Winter 🥶"
+        season = "Winter"
     elif month in (3, 4, 5):
-        season = "Spring 🌸"
+        season = "Spring"
     elif month in (6, 7, 8):
-        season = "Summer 🌞"
+        season = "Summer"
     else:
-        season = "Autumn 🍂"
+        season = "Autumn"
 
     progress_bar_full = '█'
     progress_bar_empty = '░'
@@ -82,21 +83,20 @@ def generate_progress_message(days_completed, weeks_completed, days_left, weeks_
     progress_bar = progress_bar_full * progress_filled_length + progress_bar_empty * (progress_bar_length - progress_filled_length)
 
     return f"""
-    Good Morning Dinesh! 🌞
 
-    Year Progress Report 🌟
+    Year Progress Report
 
     Today's Date and Time: {date_time}
     Weather in North Plains, OR: {temp}°C, {status}
 
     Current Season: {season}
 
-    Days completed in the year: {days_completed} 📆
-    Weeks completed in the year: {weeks_completed:.2f} 🗓️
+    Days completed in the year: {days_completed}
+    Weeks completed in the year: {weeks_completed:.2f}
 
-    Days left in the year: {days_left} 📆
-    Weeks left in the year: {weeks_left:.2f} 🗓️
-    Percentage of the year left: {percent_days_left:.2f}% 📉
+    Days left in the year: {days_left}
+    Weeks left in the year: {weeks_left:.2f}
+    Percentage of the year left: {percent_days_left:.2f}%
 
     Year Progress: [{progress_bar}] {100 - percent_days_left:.2f}% completed
     """
@@ -142,8 +142,16 @@ if __name__ == "__main__":
     year_progress_message = generate_progress_message(days_completed, weeks_completed, days_left, weeks_left, percent_days_left)
     # print(year_progress_message)
 
+    year_progress_message_prompt = f"""
+    Here is a year progress report for {datetime.now().strftime("%B %d, %Y")}:
+
+    {year_progress_message}
+
+    Analyze the report and provide an inspirational quote at the end to get the day started on a positive note.
+    """
+
     year_progress_subject = "Year Progress Report 📅"
-    gpt_message = generate_gpt_response(year_progress_message)
+    gpt_message = generate_gpt_response(year_progress_message_prompt)
     # print(f"\nGPT Response:\n {gpt_message}")
     send_email(year_progress_subject, gpt_message)
 
@@ -162,7 +170,7 @@ if __name__ == "__main__":
 
     # Collate all news updates and send them in an email after processing them with gpt
     news_updates = f"""
-    Good Morning Dinesh! 🌞
+    Here are the latest news updates in various categories for {datetime.now().strftime("%B %d, %Y")}:
 
     Tech News Update:
     {news_update_tech}
@@ -172,6 +180,8 @@ if __name__ == "__main__":
 
     India News Update:
     {news_update_india}
+
+    Analyze the news updates and provide a brief 5 key-point summary for each news category. Keep the summary very concise and include only the headline news.
     """
 
     # print(f"\nDetailed News Updates:\n {news_updates}")
