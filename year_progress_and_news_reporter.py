@@ -24,8 +24,6 @@ temperature = config.temperature
 max_tokens = config.max_tokens
 
 model_names = ["BING+OPENAI", "GPT35TURBO", "GPT4", "GEMINI", "COHERE", "MIXTRAL8x7B"]
-model_index = random.randint(0, len(model_names) - 1)
-model_name = model_names[model_index]
 
 def generate_gpt_response(user_message):
     client = OpenAIAzure(
@@ -34,7 +32,7 @@ def generate_gpt_response(user_message):
         api_version=azure_chatapi_version,
     )
     syspromptmessage = f"""
-    You are Edith, a world-class AI assistant that helps Dinesh to summarize reports. Your response will be converted into speech and will be played on Dinesh's smart speaker.
+    You are EDITH, or "Even Dead, I'm The Hero," a world-class AI assistant that is designed by Tony Stark to be a powerful tool for whoever controls it. You help Dinesh in various tasks. Your response will be converted into speech and will be played on Dinesh's smart speaker. Ensure that your responses don't include any special characters like #. Your responses must reflect Tony's characteristic mix of confidence and humor. Start your responses with a witty and engaging introduction to grab the Dinesh's attention.
     """
     system_prompt = [{
         "role": "system",
@@ -142,6 +140,7 @@ def time_left_in_year():
     return days_completed, weeks_completed, days_left, weeks_left, percent_days_left
 
 if __name__ == "__main__":
+
     days_completed, weeks_completed, days_left, weeks_left, percent_days_left = time_left_in_year()
     year_progress_message = generate_progress_message(days_completed, weeks_completed, days_left, weeks_left, percent_days_left)
     # print(year_progress_message)
@@ -155,13 +154,14 @@ if __name__ == "__main__":
     """
 
     year_progress_subject = "Year Progress Report 📅"
-    gpt_message = generate_gpt_response(year_progress_message_prompt)
+    year_progress_gpt_response = generate_gpt_response(year_progress_message_prompt)
     # print(f"\nGPT Response:\n {gpt_message}")
-    send_email(year_progress_subject, gpt_message)
+    send_email(year_progress_subject, year_progress_gpt_response)
 
     # Convert the year progress report to speech
     yearprogress_tts_output_path = "year_progress_report.mp3"
-    text_to_speech_nospeak(gpt_message, yearprogress_tts_output_path, model_name=model_name)
+    model_name = random.choice(model_names)
+    text_to_speech_nospeak(year_progress_gpt_response, yearprogress_tts_output_path, model_name=model_name)
 
     # News Updates
     news_update_subject = "News Updates 📰"
@@ -197,7 +197,5 @@ if __name__ == "__main__":
 
     # Convert the news updates to speech
     news_tts_output_path = "news_update_report.mp3"
+    model_name = random.choice(model_names)
     text_to_speech_nospeak(news_gpt_response, news_tts_output_path, model_name=model_name)
-
-
-
