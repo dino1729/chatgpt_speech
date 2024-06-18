@@ -6,7 +6,6 @@ sounddevice
 soundfile
 tiktoken
 python-dotenv
-googlesearch
 newspaper3k
 llama-hub==0.0.79.post1
 llama-index-llms-azure-openai
@@ -24,7 +23,7 @@ langchain>=0.0.329
 mediapipe
 pvporcupine
 pyaudio
-struct
+# struct
 webrtcvad
 wave
 cohere
