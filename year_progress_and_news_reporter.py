@@ -13,7 +13,7 @@ azure_api_key = config.azure_api_key
 azure_api_base = config.azure_api_base
 azure_chatapi_version = config.azure_chatapi_version
 azure_chatapi_version = config.azure_chatapi_version
-# azure_gpt35_deploymentid = config.azure_gpt35_deploymentid
+# azure_gpt4omini_deploymentid = config.azure_gpt4omini_deploymentid
 azure_gpt4_deploymentid = config.azure_gpt4_deploymentid
 
 yahoo_id = config.yahoo_id
@@ -23,7 +23,7 @@ pyowm_api_key = config.pyowm_api_key
 temperature = config.temperature
 max_tokens = config.max_tokens
 
-model_names = ["BING+OPENAI", "GPT35TURBO", "GPT4", "GEMINI", "COHERE", "MIXTRAL8x7B"]
+model_names = ["BING+OPENAI", "GPT4OMINI", "GPT4", "GEMINI", "COHERE", "MIXTRAL8x7B"]
 
 def generate_gpt_response(user_message):
     client = OpenAIAzure(

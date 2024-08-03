@@ -241,7 +241,7 @@ def text_to_speech(text, output_path, language, model_name):
             speech_config.speech_synthesis_voice_name = "en-US-JaneNeural"
         elif model_name == "GPT4":
             speech_config.speech_synthesis_voice_name = "en-US-BlueNeural"
-        elif model_name == "GPT35TURBO":
+        elif model_name == "GPT4OMINI":
             speech_config.speech_synthesis_voice_name = "en-US-AnaNeural"
         elif model_name == "COHERE":
             speech_config.speech_synthesis_voice_name = "en-US-SaraNeural"
@@ -339,7 +339,7 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
         )
         return response.choices[0].message.content
     
-    elif model_name == "GPT35TURBO":
+    elif model_name == "GPT4OMINI":
 
         response = client.chat.completions.create(
             model="gpt-35-turbo",
@@ -573,7 +573,7 @@ system_prompt = [{
 temperature = 0.5
 max_tokens = 1024
 
-model_names = ["GPT4", "GPT35TURBO", "GEMINI"]
+model_names = ["GPT4", "GPT4OMINI", "GEMINI"]
 model_index = 0
 model_name = model_names[model_index]
 

@@ -44,7 +44,7 @@ def generate_chat(model_name, conversation, temperature, max_tokens):
         openai.api_version = os.getenv("AZURE_CHATAPI_VERSION")
         openai.api_key = azure_api_key
         response = openai.ChatCompletion.create(
-            engine="gpt-3p5-turbo-16k",
+            engine="gpt-4o-mini",
             messages=conversation,
             temperature=temperature,
             max_tokens=max_tokens,

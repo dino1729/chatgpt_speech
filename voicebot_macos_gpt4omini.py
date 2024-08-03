@@ -16,9 +16,7 @@ logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 temperature = config.temperature
 max_tokens = config.max_tokens
 
-model_names = ["GROQ_MIXTRAL", "GROQ_LLAMA", "GPT4OMINI", "GPT4", "GEMINI", "COHERE"]
-model_index = random.randint(0, len(model_names) - 1)
-model_name = model_names[model_index]
+model_name = "GPT4OMINI"
 
 audio_path = "user_audio.wav"
 tts_output_path = "bot_response.mp3"
@@ -37,10 +35,7 @@ try:
         # Check if it's time to reset the conversation based on token count or inactivity
         if len(encoding.encode(json.dumps(str(conversation)))) > max_token_count or time.time() - last_activity_time > max_timeout:
             conversation = system_prompt.copy()
-            print("Conversation reset. Changing Model...") 
-            model_index = (model_index + 1) % len(model_names)
-            model_name = model_names[model_index]
-            print("Swapped to model:", model_name)       
+            print("Conversation reset")       
 
         # Update the last activity time
         last_activity_time = time.time()

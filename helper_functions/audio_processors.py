@@ -55,11 +55,11 @@ def text_to_speech(text, output_path, language, model_name):
         # Use a default voice if the language is not specified or unsupported
         default_voice = "en-US-AriaNeural"
         if model_name == "GEMINI":
-            speech_config.speech_synthesis_voice_name = "en-US-JaneNeural"
+            speech_config.speech_synthesis_voice_name = "en-US-AnaNeural"
         elif model_name == "GPT4":
             speech_config.speech_synthesis_voice_name = "en-US-BlueNeural"
-        elif model_name == "GPT35TURBO":
-            speech_config.speech_synthesis_voice_name = "en-US-AnaNeural"
+        elif model_name == "GPT4OMINI":
+            speech_config.speech_synthesis_voice_name = "en-US-JaneNeural"
         elif model_name == "COHERE":
             speech_config.speech_synthesis_voice_name = "en-US-SaraNeural"
         elif model_name == "BING+OPENAI":
@@ -80,7 +80,7 @@ def text_to_speech(text, output_path, language, model_name):
             audio_file.write(audio_data)
             print("Speech synthesized and saved to WAV file.")
 
-def text_to_speech_nospeak(text, output_path, language="en-US", model_name="GPT35TURBO"):
+def text_to_speech_nospeak(text, output_path, language="en-US", model_name="GPT4OMINI"):
     
     speech_config = speechsdk.SpeechConfig(subscription=azurespeechkey, region=azurespeechregion)
     # Set the voice based on the language
@@ -92,11 +92,11 @@ def text_to_speech_nospeak(text, output_path, language="en-US", model_name="GPT3
         # Use a default voice if the language is not specified or unsupported
         default_voice = "en-US-AriaNeural"
         if model_name == "GEMINI":
-            speech_config.speech_synthesis_voice_name = "en-US-JaneNeural"
+            speech_config.speech_synthesis_voice_name = "en-US-AnaNeural"
         elif model_name == "GPT4":
             speech_config.speech_synthesis_voice_name = "en-US-BlueNeural"
-        elif model_name == "GPT35TURBO":
-            speech_config.speech_synthesis_voice_name = "en-US-AnaNeural"
+        elif model_name == "GPT4OMINI":
+            speech_config.speech_synthesis_voice_name = "en-US-JaneNeural"
         elif model_name == "COHERE":
             speech_config.speech_synthesis_voice_name = "en-US-SaraNeural"
         elif model_name == "BING+OPENAI":

@@ -20,10 +20,10 @@ if davincimodel_flag:
     openai.api_version = os.environ.get("AZURE_API_VERSION")
     print("Using text-davinci-003 model.")
 else:
-    LLM_DEPLOYMENT_NAME = "gpt-3p5-turbo-16k"
+    LLM_DEPLOYMENT_NAME = "gpt-4o-mini"
     LLM_MODEL_NAME = "gpt-35-turbo-16k"
     openai.api_version = os.environ.get("AZURE_CHATAPI_FUNCTIONS_VERSION")
-    print("Using gpt-3p5-turbo-16k model 2023-07-01-preview.")
+    print("Using gpt-4o-mini model 2023-07-01-preview.")
 
 llm = AzureOpenAI(
     engine=LLM_DEPLOYMENT_NAME, 

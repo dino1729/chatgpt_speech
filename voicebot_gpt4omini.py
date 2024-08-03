@@ -40,10 +40,7 @@ temperature = config.temperature
 max_tokens = config.max_tokens
 
 # Randomly select a model_index value from the list of model names
-model_names = ["GROQ_MIXTRAL", "GROQ_LLAMA", "GPT4OMINI", "GPT4", "GEMINI", "COHERE"]
-model_index = random.randint(0, len(model_names) - 1)
-model_name = model_names[model_index]
-print("Starting with model:", model_name)
+model_name = "GPT4OMINI"
 
 system_prompt = config.system_prompt
 audio_path = "user_audio.wav"
@@ -83,12 +80,7 @@ try:
         # Check if it's time to reset the conversation based on token count or inactivity
         if len(encoding.encode(json.dumps(str(conversation)))) > max_token_count or time.time() - last_activity_time > max_timeout:
             conversation = system_prompt.copy()  # Reset the conversation to the default
-            print("Conversation reset. Changing Model...") 
-            # Increment the model index
-            model_index = (model_index + 1) % len(model_names)
-            # Get the current model name
-            model_name = model_names[model_index]
-            print("Swapped to model:", model_name)
+            print("Conversation reset")
             prompt_printed = False  # Allow prompt to be printed again after model swap
 
         # Update the last activity time

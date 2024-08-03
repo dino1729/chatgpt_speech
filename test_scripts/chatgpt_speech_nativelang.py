@@ -131,7 +131,7 @@ while True:
     conversation.append(new_message)
 
     response = openai.ChatCompletion.create(
-        engine="gpt-3p5-turbo-16k",
+        engine="gpt-4o-mini",
         messages= conversation,
         **OPENAI_COMPLETION_OPTIONS,
         )
