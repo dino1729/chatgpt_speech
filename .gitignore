@@ -9,3 +9,5 @@ bing_data/
 .venv
 __pycache__
 config.yml
+used_topics.txt
+used_personalities.txt

@@ -2,15 +2,16 @@ import smtplib
 from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from numpy import less
 from openai import AzureOpenAI as OpenAIAzure
 from pyowm import OWM
+from torch import rand
 from config import config
 from helper_functions.chat_generation_with_internet import internet_connected_chatbot
 from helper_functions.audio_processors import text_to_speech_nospeak
 from datetime import datetime
 import random
 import supabase
+import os
 
 azure_api_key = config.azure_api_key
 azure_api_base = config.azure_api_base
@@ -25,7 +26,17 @@ supabase_service_role_key = config.supabase_service_role_key
 public_supabase_url = config.public_supabase_url
 
 # List of topics
-topics = ["How can I be more productive?", "How to improve my communication skills?", "How to be a better leader?", "How are electric vehicles less harmful to the environment?", "How can I think clearly in adverse scenarios?", "What are the tenets of effective office politics?", "How to be more creative?", "How to improve my problem-solving skills?", "How to be more confident?", "How to be more empathetic?", "What can I learn from Boyd, the fighter pilot who changed the art of war?", "How can I seek the mentorship I want from key influential people", "How can I communicate more effectively?", "Give me suggestions to reduce using filler words when communicating highly technical topics?"]
+topics = [
+    "How can I be more productive?", "How to improve my communication skills?", "How to be a better leader?",
+    "How are electric vehicles less harmful to the environment?", "How can I think clearly in adverse scenarios?",
+    "What are the tenets of effective office politics?", "How to be more creative?", "How to improve my problem-solving skills?",
+    "How to be more confident?", "How to be more empathetic?", "What can I learn from Boyd, the fighter pilot who changed the art of war?",
+    "How can I seek the mentorship I want from key influential people", "How can I communicate more effectively?",
+    "Give me suggestions to reduce using filler words when communicating highly technical topics?",
+    "How to apply the best game theory concepts in getting ahead in office poilitics?", "What are some best ways to play office politics?",
+    "How to be more persuasive, assertive, influential, impactful, engaging, inspiring, motivating, captivating and convincing in my communication?",
+    "What are the top 8 ways the tit-for-tat strategy prevails in the repeated prisoner's dilemma, and how can these be applied to succeed in life and office politics?"
+]
 
 yahoo_id = config.yahoo_id
 yahoo_app_password = config.yahoo_app_password
@@ -35,6 +46,44 @@ temperature = config.temperature
 max_tokens = config.max_tokens
 
 model_names = ["BING+OPENAI", "GPT4OMINI", "GPT4", "GEMINI", "COHERE", "MIXTRAL8x7B"]
+
+# List of personalities
+personalities = [
+    "Chanakya", "Lord Krishna", "Richard Feynman", "Nikola Tesla", 
+    "Marie Curie", "Alan Turing", "Carl Sagan", "Leonardo da Vinci", 
+    "Douglas Engelbart", "JCR Licklider", "Vannevar Bush",
+]
+
+def get_random_personality():
+    used_personalities_file = "used_personalities.txt"
+
+    # Read used personalities from the file
+    if os.path.exists(used_personalities_file):
+        with open(used_personalities_file, "r") as file:
+            used_personalities = file.read().splitlines()
+    else:
+        used_personalities = []
+
+    # Determine unused personalities
+    unused_personalities = list(set(personalities) - set(used_personalities))
+
+    # If all personalities have been used, reset the list
+    if not unused_personalities:
+        unused_personalities = personalities.copy()
+        used_personalities = []
+
+    # Select a random personality from the unused list
+    personality = random.choice(unused_personalities)
+
+    # Update the used personalities list
+    used_personalities.append(personality)
+
+    # Write the updated used personalities back to the file
+    with open(used_personalities_file, "w") as file:
+        for used_personality in used_personalities:
+            file.write(f"{used_personality}\n")
+
+    return personality
 
 def generate_embeddings(text, model=azure_embedding_deploymentid):
     client = OpenAIAzure(
@@ -73,9 +122,40 @@ def generate_gpt_response_memorypalace(user_message):
 
     return message
 
+def get_random_topic():
+    used_topics_file = "used_topics.txt"
+
+    # Read used topics from the file
+    if os.path.exists(used_topics_file):
+        with open(used_topics_file, "r") as file:
+            used_topics = file.read().splitlines()
+    else:
+        used_topics = []
+
+    # Determine unused topics
+    unused_topics = list(set(topics) - set(used_topics))
+
+    # If all topics have been used, reset the list
+    if not unused_topics:
+        unused_topics = topics.copy()
+        used_topics = []
+
+    # Select a random topic from the unused list
+    topic = random.choice(unused_topics)
+
+    # Update the used topics list
+    used_topics.append(topic)
+
+    # Write the updated used topics back to the file
+    with open(used_topics_file, "w") as file:
+        for used_topic in used_topics:
+            file.write(f"{used_topic}\n")
+
+    return topic
+
 def get_random_lesson():
     # Step 1: Select a random topic
-    topic = random.choice(topics)
+    topic = get_random_topic()
 
     # Step 2: Generate embeddings for the topic
     topic_embedding = generate_embeddings(topic)
@@ -129,14 +209,14 @@ def generate_gpt_response(user_message):
 
     return message
 
-def generate_quote():
+def generate_quote(random_personality):
     client = OpenAIAzure(
         api_key=azure_api_key,
         azure_endpoint=azure_api_base,
         api_version=azure_chatapi_version,
     )
-    quote_prompt = """
-    Provide a random quote from either Chanakya, Lord Krishna, Richard Feynman, Nikola Tesla, Marie Curie, Alan Turing, Carl Sagan, Leonardo da Vinci, Douglas Engelbart, JCR Licklider, or Vannevar Bush.
+    quote_prompt = f"""
+    Provide a random quote from {random_personality} to inspire Dinesh for the day.
     """
     response = client.chat.completions.create(
         model=azure_gpt4_deploymentid,
@@ -261,11 +341,13 @@ if __name__ == "__main__":
     year_progress_message = generate_progress_message(days_completed, weeks_completed, days_left, weeks_left, percent_days_left)
     # print(year_progress_message)
 
-    quote = generate_quote()
+    random_personality = get_random_personality()
+    quote = generate_quote(random_personality)
     year_progress_message_with_quote = f"{year_progress_message}\n\nQuote of the Day: {quote}"
 
     lesson_learned = get_random_lesson()
     year_progress_message_with_quote_with_lesson = f"{year_progress_message_with_quote}\n\nLesson Learned: {lesson_learned}"
+    # print(year_progress_message_with_quote_with_lesson)
     
     year_progress_subject = "Year Progress Report 📅"
     send_email(year_progress_subject, year_progress_message_with_quote_with_lesson)
@@ -277,7 +359,7 @@ if __name__ == "__main__":
 
     Please analyze the report and summarize it in a manner suitable for a voice assistant to deliver as a daily update.
     
-    Include a random quote from either Chanakya, Lord Krishna, Richard Feynman, Nikola Tesla, Marie Curie, Alan Turing, Carl Sagan, Leonardo da Vinci, Douglas Engelbart, JCR Licklider, or Vannevar Bush.
+    Include a random quote from {random_personality} to inspire Dinesh for the day.
 
     Conclude the message with a lesson learned from the memory palace search results: {lesson_learned}
 
