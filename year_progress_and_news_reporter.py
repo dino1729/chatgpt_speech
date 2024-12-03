@@ -4,7 +4,6 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from openai import AzureOpenAI as OpenAIAzure
 from pyowm import OWM
-from torch import rand
 from config import config
 from helper_functions.chat_generation_with_internet import internet_connected_chatbot
 from helper_functions.audio_processors import text_to_speech_nospeak
