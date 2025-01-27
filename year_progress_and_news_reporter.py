@@ -242,13 +242,16 @@ def generate_progress_message(days_completed, weeks_completed, days_left, weeks_
     now = datetime.now()
     date_time = now.strftime("%B %d, %Y %H:%M:%S")
 
-    # Quarterly earnings dates (based on MSFT's reporting)
+    # Get the current year
+    current_year = datetime.now().year
+
+    # Calculate earnings dates dynamically based on the current year
     earnings_dates = [
-        datetime(2024, 1, 23),  # Q1 end, Q2 start
-        datetime(2024, 4, 25),  # Q2 end, Q3 start
-        datetime(2024, 7, 29),  # Q3 end, Q4 start
-        datetime(2024, 10, 24), # Q4 end, Q1 start (assumed)
-        datetime(2025, 1, 23)   # Next Q1 (assumed)
+        datetime(current_year, 1, 23),  # Q1 end, Q2 start
+        datetime(current_year, 4, 25),  # Q2 end, Q3 start
+        datetime(current_year, 7, 29),  # Q3 end, Q4 start
+        datetime(current_year, 10, 24), # Q4 end, Q1 start (assumed)
+        datetime(current_year + 1, 1, 23)  # Next Q1 (assumed)
     ]
 
     # Determine the current quarter based on the date
