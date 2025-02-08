@@ -48,7 +48,8 @@ def text_to_speech(text, output_path, language, model_name):
     speech_config = speechsdk.SpeechConfig(subscription=azurespeechkey, region=azurespeechregion)
     # Set the voice based on the language
     if language == "te-IN":
-        speech_config.speech_synthesis_voice_name = "te-IN-ShrutiNeural"
+        # speech_config.speech_synthesis_voice_name = "te-IN-ShrutiNeural"
+        speech_config.speech_synthesis_voice_name = "en-US-EmmaMultilingualNeural"
     elif language == "hi-IN":
         speech_config.speech_synthesis_voice_name = "hi-IN-SwaraNeural"
     else:
@@ -59,7 +60,7 @@ def text_to_speech(text, output_path, language, model_name):
         elif model_name == "GPT4":
             speech_config.speech_synthesis_voice_name = "en-US-BlueNeural"
         elif model_name == "GPT4OMINI":
-            speech_config.speech_synthesis_voice_name = "en-US-JaneNeural"
+            speech_config.speech_synthesis_voice_name = "en-US-EmmaMultilingualNeural"
         elif model_name == "COHERE":
             speech_config.speech_synthesis_voice_name = "en-US-SaraNeural"
         elif model_name == "BING+OPENAI":
@@ -85,7 +86,8 @@ def text_to_speech_nospeak(text, output_path, language="en-US", model_name="GPT4
     speech_config = speechsdk.SpeechConfig(subscription=azurespeechkey, region=azurespeechregion)
     # Set the voice based on the language
     if language == "te-IN":
-        speech_config.speech_synthesis_voice_name = "te-IN-ShrutiNeural"
+        # speech_config.speech_synthesis_voice_name = "te-IN-ShrutiNeural"
+        speech_config.speech_synthesis_voice_name = "en-US-EmmaMultilingualNeural"
     elif language == "hi-IN":
         speech_config.speech_synthesis_voice_name = "hi-IN-SwaraNeural"
     else:
@@ -96,7 +98,7 @@ def text_to_speech_nospeak(text, output_path, language="en-US", model_name="GPT4
         elif model_name == "GPT4":
             speech_config.speech_synthesis_voice_name = "en-US-BlueNeural"
         elif model_name == "GPT4OMINI":
-            speech_config.speech_synthesis_voice_name = "en-US-JaneNeural"
+            speech_config.speech_synthesis_voice_name = "en-US-EmmaMultilingualNeural"
         elif model_name == "COHERE":
             speech_config.speech_synthesis_voice_name = "en-US-SaraNeural"
         elif model_name == "BING+OPENAI":

@@ -61,8 +61,10 @@ try:
 
             # Delete the audio files
             try:
-                os.remove(audio_path)
-                os.remove(tts_output_path)
+                if os.path.exists(audio_path):
+                    os.remove(audio_path)
+                if os.path.exists(tts_output_path):
+                    os.remove(tts_output_path)
             except Exception as e:
                 print("Error deleting audio files:", str(e))
                 continue

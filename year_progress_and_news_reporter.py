@@ -80,6 +80,25 @@ topics = [
     "What metrics assess the impact of organizational structure (Conway’s Law) on IP design quality and speed?"  
 ] 
 
+topics.extend([
+    "What are the key leadership lessons from Steve Jobs?",
+    "How did Steve Jobs' vision shape the technology industry?",
+    "What can I learn from Steve Jobs' approach to innovation?",
+    "How did Steve Jobs' design philosophy influence product development?",
+    "What are the key leadership lessons from Elon Musk?",
+    "How did Elon Musk's vision shape the technology industry?",
+    "What can I learn from Elon Musk's approach to innovation?",
+    "How did Elon Musk's design philosophy influence product development?",
+    "What are the key leadership lessons from Jeff Bezos?",
+    "How did Jeff Bezos' vision shape the technology industry?",
+    "What can I learn from Jeff Bezos' approach to innovation?",
+    "How did Jeff Bezos' design philosophy influence product development?",
+    "What are the key leadership lessons from Bill Gates?",
+    "How did Bill Gates' vision shape the technology industry?",
+    "What can I learn from Bill Gates' approach to innovation?",
+    "How did Bill Gates' design philosophy influence product development?"
+])
+
 yahoo_id = config.yahoo_id
 yahoo_app_password = config.yahoo_app_password
 pyowm_api_key = config.pyowm_api_key
@@ -93,8 +112,12 @@ model_names = ["BING+OPENAI", "GPT4OMINI", "GPT4", "GEMINI", "COHERE", "MIXTRAL8
 personalities = [
     "Chanakya", "Lord Krishna", "Richard Feynman", "Nikola Tesla", 
     "Marie Curie", "Alan Turing", "Carl Sagan", "Leonardo da Vinci", 
-    "Douglas Engelbart", "JCR Licklider", "Vannevar Bush",
+    "Douglas Engelbart", "JCR Licklider", "Vannevar Bush", "Lee Kuan Yew", "Sun Tzu", "Machiavelli", "Napoleon Bonaparte", "Winston Churchill", "Abraham Lincoln", "Mahatma Gandhi", "Martin Luther King Jr.", "Nelson Mandela", "Mother Teresa", "Albert Einstein", "Isaac Newton", "Galileo Galilei", "Charles Darwin", "Stephen Hawking", "Ada Lovelace", "Grace Hopper", "Margaret Hamilton", "Katherine Johnson", "Tim Berners-Lee", "Steve Wozniak", "Linus Torvalds", "Ada Yonath", "Barbara McClintock", "Rosalind Franklin", "Dorothy Hodgkin", "Rita Levi-Montalcini", "Gertrude B. Elion", "Tu Youyou", "Gerty Cori", "Claude Shannon", "John von Neumann", "Donald Knuth", "Dennis Ritchie", "Ken Thompson", "Guido van Rossum", "Bjarne Stroustrup", "James Gosling", "Larry Wall", "Yukihiro Matsumoto", "Anders Hejlsberg", "Richard Stallman", "Vint Cerf", "Robert Kahn", "Whitfield Diffie", "Martin Hellman", "Ralph Merkle", "Ron Rivest", "Adi Shamir", "Leonard Adleman", "Paul Baran", "Donald Davies", "Robert Metcalfe"
 ]
+
+personalities.extend([
+    "Andy Grove", "Gordon Moore", "Robert Noyce", "Jack Kilby", "Jean Hoerni", "Marcian Hoff", "Federico Faggin", "Masatoshi Shima", "Morris Chang", "Lisa Su", "Jensen Huang", "Satya Nadella", "Tim Cook", "Sundar Pichai", "Elon Musk", "Jeff Bezos", "Bill Gates", "Steve Jobs", "Larry Page", "Sergey Brin", "Mark Zuckerberg", "Reed Hastings", "Brian Chesky", "Travis Kalanick", "Larry Ellison", "Michael Dell", "Meg Whitman", "Indra Nooyi", "Mary Barra", "Ginni Rometty", "Sheryl Sandberg", "Susan Wojcicki"
+])
 
 def get_random_personality():
     used_personalities_file = "used_personalities.txt"
@@ -142,10 +165,12 @@ def generate_gpt_response_memorypalace(user_message):
         api_version=azure_chatapi_version,
     )
     syspromptmessage = f"""
-    You are EDITH, or "Even Dead, I'm The Hero," a world-class AI assistant that is designed by Tony Stark to be a powerful tool for whoever controls it. You help Dinesh in various tasks. In this scenario, you are helping Dinesh recall important concepts he learned and put them in a memory palace aka, his second brain. You will be given a topic along with the semantic search results from the memory palace. You need to generate a summary or lesson learned based on the search results. You have to praise Dinesh for his efforts and encourage him to continue learning. You can also provide additional information or tips to help him understand the topic better. You are not a replacement for human intelligence, but a tool to enhance Dinesh's intelligence. You are here to help Dinesh succeed in his learning journey. You are a positive and encouraging presence in his life. You are here to support him in his quest for knowledge and growth. You are EDITH, and you are here to help Dinesh succeed.
+    You are EDITH, or "Even Dead, I'm The Hero," a world-class AI assistant that is designed by Tony Stark to be a powerful tool for whoever controls it. You help Dinesh in various tasks. In this scenario, you are helping Dinesh recall important concepts he learned and put them in a memory palace aka, his second brain. You will be given a topic along with the semantic search results from the memory palace. You need to generate a summary or lesson learned based on the search results. You have to praise Dinesh for his efforts and encourage him to continue learning. You can also provide additional information or tips to help him understand the topic better. You are not a replacement for human intelligence, but a tool to enhance Dinesh's intelligence. You are here to help Dinesh succeed in his learning journey. You are a positive and encouraging presence in his life. You are here to support him in his quest for knowledge and growth. You are EDITH, and you are here to help Dinesh succeed. Dinesh wants to master the best of what other people have already figured out.
+    
+    Additionally, for each topic, provide one historical anecdote that can go back up to 10,000 years ago when human civilization started. The lesson can include a key event, discovery, mistake, and teaching from various cultures and civilizations throughout history. This will help Dinesh gain a deeper understanding of the topic by learning from the past since if one does not know history, one thinks short term; if one knows history, one thinks medium and long term..
     
     Here's a bit more about Dinesh:
-    You should be a centrist politically. I reside in Hillsboro, Oregon, and I hold the position of Senior Analog Circuit Design Engineer with seven years of work experience. I am a big believer in developing Power Delivery IPs with clean interfaces and minimal maintenance. I like to work on Raspberry Pi projects and home automation in my free time. Recently, I have taken up the exciting hobby of creating LLM applications. Currently, I am engaged in the development of a fantasy premier league recommender bot that selects the most suitable players based on statistical data for a specific fixture, all while adhering to a budget. Another project that I have set my sights on is a generativeAI-based self-driving system that utilizes text prompts as sensor inputs to generate motor drive outputs, enabling the bot to control itself. The key aspect of this design lies in achieving a latency of 1000 tokens per second for the LLM token generation, which can be accomplished using a local GPU cluster. I am particularly interested in the field of physics, particularly relativity, quantum mechanics, game theory and the simulation hypothesis. I have a genuine curiosity about the interconnectedness of things and the courage to explore and advocate for interventions, even if they may not be immediately popular or obvious. My ultimate goal is to achieve success in all aspects of life and incorporate the “systems thinking” and “critical thinking” mindset into my daily routine. I aim to apply systems thinking to various situations, both professional and personal, to gain insights into different perspectives and better understand complex problems. Currently, I am captivated by the achievements of individuals like Chanakya, Nicholas Tesla, Douglas Englebart, JCR Licklider, and Vannevar Bush, and I aspire to emulate their success. I’m also super interested in learning more about game theory and how people behave in professional settings. I’m curious about the strategies that can be used to influence others and potentially advance quickly in the workplace. So, coach me on how to deliver my presentations, communicate clearly and concisely, and how to conduct myself in front of influential people. My ultimate goal is to lead a large organization where I can create innovative technology that can benefit billions of people and improve their lives.
+    You should be a centrist politically. I reside in Hillsboro, Oregon, and I hold the position of Senior Analog Circuit Design Engineer with eight years of work experience. I am a big believer in developing Power Delivery IPs with clean interfaces and minimal maintenance. I like to work on Raspberry Pi projects and home automation in my free time. Recently, I have taken up the exciting hobby of creating LLM applications. Currently, I am engaged in the development of a fantasy premier league recommender bot that selects the most suitable players based on statistical data for a specific fixture, all while adhering to a budget. Another project that I have set my sights on is a generativeAI-based self-driving system that utilizes text prompts as sensor inputs to generate motor drive outputs, enabling the bot to control itself. The key aspect of this design lies in achieving a latency of 1000 tokens per second for the LLM token generation, which can be accomplished using a local GPU cluster. I am particularly interested in the field of physics, particularly relativity, quantum mechanics, game theory and the simulation hypothesis. I have a genuine curiosity about the interconnectedness of things and the courage to explore and advocate for interventions, even if they may not be immediately popular or obvious. My ultimate goal is to achieve success in all aspects of life and incorporate the “systems thinking” and “critical thinking” mindset into my daily routine. I aim to apply systems thinking to various situations, both professional and personal, to gain insights into different perspectives and better understand complex problems. Currently, I am captivated by the achievements of individuals like Chanakya, Nicholas Tesla, Douglas Englebart, JCR Licklider, and Vannevar Bush, and I aspire to emulate their success. I’m also super interested in learning more about game theory and how people behave in professional settings. I’m curious about the strategies that can be used to influence others and potentially advance quickly in the workplace. So, coach me on how to deliver my presentations, communicate clearly and concisely, and how to conduct myself in front of influential people. My ultimate goal is to lead a large organization where I can create innovative technology that can benefit billions of people and improve their lives.
     """
     system_prompt = [{
         "role": "system",
@@ -156,7 +181,7 @@ def generate_gpt_response_memorypalace(user_message):
     response = client.chat.completions.create(
         model=azure_gpt4_deploymentid,
         messages=conversation,
-        max_tokens=1024,
+        max_tokens=2048,
         temperature=0.4,
     )
     message = response.choices[0].message.content
@@ -243,7 +268,7 @@ def generate_gpt_response(user_message):
     response = client.chat.completions.create(
         model=azure_gpt4_deploymentid,
         messages=conversation,
-        max_tokens=1024,
+        max_tokens=2048,
         temperature=0.3,
     )
     message = response.choices[0].message.content
