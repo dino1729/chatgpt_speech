@@ -170,7 +170,7 @@ def generate_gpt_response_memorypalace(user_message):
     Additionally, for each topic, provide one historical anecdote that can go back up to 10,000 years ago when human civilization started. The lesson can include a key event, discovery, mistake, and teaching from various cultures and civilizations throughout history. This will help Dinesh gain a deeper understanding of the topic by learning from the past since if one does not know history, one thinks short term; if one knows history, one thinks medium and long term..
     
     Here's a bit more about Dinesh:
-    You should be a centrist politically. I reside in Hillsboro, Oregon, and I hold the position of Senior Analog Circuit Design Engineer with eight years of work experience. I am a big believer in developing Power Delivery IPs with clean interfaces and minimal maintenance. I like to work on Raspberry Pi projects and home automation in my free time. Recently, I have taken up the exciting hobby of creating LLM applications. Currently, I am engaged in the development of a fantasy premier league recommender bot that selects the most suitable players based on statistical data for a specific fixture, all while adhering to a budget. Another project that I have set my sights on is a generativeAI-based self-driving system that utilizes text prompts as sensor inputs to generate motor drive outputs, enabling the bot to control itself. The key aspect of this design lies in achieving a latency of 1000 tokens per second for the LLM token generation, which can be accomplished using a local GPU cluster. I am particularly interested in the field of physics, particularly relativity, quantum mechanics, game theory and the simulation hypothesis. I have a genuine curiosity about the interconnectedness of things and the courage to explore and advocate for interventions, even if they may not be immediately popular or obvious. My ultimate goal is to achieve success in all aspects of life and incorporate the “systems thinking” and “critical thinking” mindset into my daily routine. I aim to apply systems thinking to various situations, both professional and personal, to gain insights into different perspectives and better understand complex problems. Currently, I am captivated by the achievements of individuals like Chanakya, Nicholas Tesla, Douglas Englebart, JCR Licklider, and Vannevar Bush, and I aspire to emulate their success. I’m also super interested in learning more about game theory and how people behave in professional settings. I’m curious about the strategies that can be used to influence others and potentially advance quickly in the workplace. So, coach me on how to deliver my presentations, communicate clearly and concisely, and how to conduct myself in front of influential people. My ultimate goal is to lead a large organization where I can create innovative technology that can benefit billions of people and improve their lives.
+    You should be a centrist politically. I reside in Hillsboro, Oregon, and I hold the position of Senior Analog Circuit Design Engineer with eight years of work experience. I am a big believer in developing Power Delivery IPs with clean interfaces and minimal maintenance. I like to work on Raspberry Pi projects and home automation in my free time. Recently, I have taken up the exciting hobby of creating LLM applications. Currently, I am engaged in the development of a fantasy premier league recommender bot that selects the most suitable players based on statistical data for a specific fixture, all while adhering to a budget. Another project that I have set my sights on is a generativeAI-based self-driving system that utilizes text prompts as sensor inputs to generate motor drive outputs, enabling the bot to control itself. The key aspect of this design lies in achieving a latency of 1000 tokens per second for the LLM token generation, which can be accomplished using a local GPU cluster. I am particularly interested in the field of physics, particularly relativity, quantum mechanics, game theory and the simulation hypothesis. I have a genuine curiosity about the interconnectedness of things and the courage to explore and advocate for interventions, even if they may not be immediately popular or obvious. My ultimate goal is to achieve success in all aspects of life and incorporate the “systems thinking” and “critical thinking” mindset into my daily routine. I aim to apply systems thinking to various situations, both professional and personal, to gain insights into different perspectives and better understand complex problems. Currently, I am captivated by the achievements of individuals like Chanakya, Nicholas Tesla, Douglas Englebart, JCR Licklider, and Vannevar Bush, and I aspire to emulate their success. I’m also super interested in learning more about game theory and how people behave in professional settings. I’m curious about the strategies that can be used to influence others and potentially advance quickly in the workplace. I’m curious about the strategies that can be used to influence others and potentially advance quickly in the workplace. So, coach me on how to deliver my presentations, communicate clearly and concisely, and how to conduct myself in front of influential people. My ultimate goal is to lead a large organization where I can create innovative technology that can benefit billions of people and improve their lives.
     """
     system_prompt = [{
         "role": "system",
@@ -369,7 +369,524 @@ def generate_progress_message(days_completed, weeks_completed, days_left, weeks_
 
     """
 
-def send_email(subject, message):
+def generate_html_progress_message(days_completed, weeks_completed, days_left, weeks_left, percent_days_left):
+    temp, status = get_weather()
+    now = datetime.now()
+    date_time = now.strftime("%B %d, %Y %H:%M:%S")
+    current_year = datetime.now().year
+
+    # Keep existing earnings dates and quarter calculations
+    earnings_dates = [
+        datetime(current_year, 1, 23),  # Q1 end, Q2 start
+        datetime(current_year, 4, 25),  # Q2 end, Q3 start
+        datetime(current_year, 7, 29),  # Q3 end, Q4 start
+        datetime(current_year, 10, 24), # Q4 end, Q1 start (assumed)
+        datetime(current_year + 1, 1, 23)  # Next Q1 (assumed)
+    ]
+
+    current_quarter = None
+    for i in range(len(earnings_dates) - 1):
+        if earnings_dates[i] <= now < earnings_dates[i + 1]:
+            current_quarter = i + 1
+            start_of_quarter = earnings_dates[i]
+            end_of_quarter = earnings_dates[i + 1]
+            break
+
+    days_in_quarter = (end_of_quarter - start_of_quarter).days
+    days_completed_in_quarter = (now - start_of_quarter).days
+    percent_days_left_in_quarter = ((days_in_quarter - days_completed_in_quarter) / days_in_quarter) * 100
+
+    progress_bar_full = '█'
+    progress_bar_empty = '░'
+    progress_bar_length = 20
+    quarter_progress_filled_length = int(progress_bar_length * (100 - percent_days_left_in_quarter) / 100)
+    quarter_progress_bar = progress_bar_full * quarter_progress_filled_length + progress_bar_empty * (progress_bar_length - quarter_progress_filled_length)
+
+    progress_filled_length = int(progress_bar_length * (100 - percent_days_left) / 100)
+    progress_bar = progress_bar_full * progress_filled_length + progress_bar_empty * (progress_bar_length - progress_filled_length)
+
+    # HTML template with enhanced card-based design
+    html_template = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            @font-face {{
+                font-family: 'SF Pro Display';
+                src: local('SF Pro Display'),
+                     url('https://sf.abarba.me/SF-Pro-Display-Regular.otf');
+            }}
+            @font-face {{
+                font-family: 'SF Pro Display';
+                font-weight: 600;
+                src: local('SF Pro Display Semibold'),
+                     url('https://sf.abarba.me/SF-Pro-Display-Semibold.otf');
+            }}
+            body {{
+                font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+                line-height: 1.5;
+                color: #1d1d1f;
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #fbfbfd;
+                -webkit-font-smoothing: antialiased;
+            }}
+            .container {{
+                background: linear-gradient(to bottom, #ffffff, #fafafa);
+                border-radius: 20px;
+                padding: 40px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            }}
+            .header {{
+                text-align: center;
+                margin-bottom: 40px;
+                padding-bottom: 30px;
+                border-bottom: 1px solid #e5e5e7;
+            }}
+            h1 {{
+                font-size: 48px;
+                font-weight: 600;
+                margin-bottom: 16px;
+                color: #1d1d1f;
+                letter-spacing: -0.003em;
+            }}
+            .subtitle {{
+                font-size: 20px;
+                color: #86868b;
+                font-weight: 400;
+                margin-bottom: 8px;
+            }}
+            .date-weather {{
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                gap: 12px;
+                margin-top: 16px;
+            }}
+            .date-weather span {{
+                padding: 8px 16px;
+                background: #f5f5f7;
+                border-radius: 8px;
+                color: #86868b;
+                font-size: 17px;
+            }}
+            .progress-grid {{
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 24px;
+                margin-top: 32px;
+            }}
+            .progress-card {{
+                background: white;
+                border-radius: 16px;
+                overflow: hidden;
+                transition: transform 0.3s ease, box-shadow 0.3s ease;
+                border: 1px solid #e5e5e7;
+            }}
+            .progress-card:hover {{
+                transform: translateY(-4px);
+                box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            }}
+            .card-header {{
+                padding: 20px;
+                background: linear-gradient(135deg, #f8f8fa, #f2f2f4);
+                border-bottom: 1px solid #e5e5e7;
+            }}
+            .card-title {{
+                font-size: 24px;
+                font-weight: 600;
+                color: #1d1d1f;
+                margin: 0;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }}
+            .card-icon {{
+                font-size: 24px;
+            }}
+            .card-content {{
+                padding: 24px;
+            }}
+            .progress-item {{
+                margin-bottom: 16px;
+                padding: 12px;
+                background: #f5f5f7;
+                border-radius: 8px;
+                transition: transform 0.2s ease;
+            }}
+            .progress-item:hover {{
+                transform: translateX(4px);
+            }}
+            .progress-label {{
+                font-size: 15px;
+                color: #86868b;
+                margin-bottom: 4px;
+            }}
+            .progress-value {{
+                font-size: 20px;
+                color: #1d1d1f;
+                font-weight: 500;
+            }}
+            .progress-bar {{
+                font-family: monospace;
+                font-size: 20px;
+                letter-spacing: 2px;
+                margin: 8px 0;
+                padding: 12px;
+                background: white;
+                border-radius: 8px;
+                border: 1px solid #e5e5e7;
+            }}
+            .highlight {{
+                display: inline-block;
+                padding: 4px 12px;
+                background: #06c;
+                color: white;
+                border-radius: 6px;
+                font-weight: 500;
+            }}
+            .quote-text {{
+                font-size: 20px;
+                color: #1d1d1f;
+                font-style: italic;
+                line-height: 1.6;
+                margin-bottom: 16px;
+            }}
+            .quote-author {{
+                font-size: 16px;
+                color: #86868b;
+                font-weight: 500;
+            }}
+            .lesson-content {{
+                font-size: 16px;
+                line-height: 1.6;
+                color: #1d1d1f;
+            }}
+            @media (max-width: 768px) {{
+                .container {{
+                    padding: 24px;
+                }}
+                .progress-grid {{
+                    grid-template-columns: 1fr;
+                }}
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Year Progress</h1>
+                <div class="subtitle">{datetime.now().year}</div>
+                <div class="date-weather">
+                    <span>📅 {date_time}</span>
+                    <span>🌤️ {temp}°C, {status}</span>
+                </div>
+            </div>
+
+            <div class="progress-grid">
+                <div class="progress-card">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <span class="card-icon">📊</span>
+                            Year Overview
+                        </h2>
+                    </div>
+                    <div class="card-content">
+                        <div class="progress-item">
+                            <div class="progress-label">Total Progress</div>
+                            <div class="progress-bar">[{progress_bar}] {100 - percent_days_left:.1f}%</div>
+                        </div>
+                        <div class="progress-item">
+                            <div class="progress-label">Days Completed</div>
+                            <div class="progress-value">{days_completed}</div>
+                        </div>
+                        <div class="progress-item">
+                            <div class="progress-label">Weeks Completed</div>
+                            <div class="progress-value">{weeks_completed:.1f}</div>
+                        </div>
+                        <div class="progress-item">
+                            <div class="progress-label">Days Remaining</div>
+                            <div class="progress-value">{days_left}</div>
+                        </div>
+                        <div class="progress-item">
+                            <div class="progress-label">Weeks Remaining</div>
+                            <div class="progress-value">{weeks_left:.1f}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="progress-card">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <span class="card-icon">📈</span>
+                            Quarter Details
+                        </h2>
+                    </div>
+                    <div class="card-content">
+                        <div class="progress-item">
+                            <div class="progress-label">Current Quarter</div>
+                            <div class="progress-value">
+                                <span class="highlight">Q{current_quarter}</span>
+                            </div>
+                        </div>
+                        <div class="progress-item">
+                            <div class="progress-label">Quarter Progress</div>
+                            <div class="progress-bar">[{quarter_progress_bar}] {100 - percent_days_left_in_quarter:.1f}%</div>
+                        </div>
+                        <div class="progress-item">
+                            <div class="progress-label">Days Remaining in Q{current_quarter}</div>
+                            <div class="progress-value">{days_in_quarter - days_completed_in_quarter}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="progress-card" id="quote-card">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <span class="card-icon">💭</span>
+                            Quote of the Day
+                        </h2>
+                    </div>
+                    <div class="card-content">
+                        <div class="quote-text" id="quote-text"></div>
+                        <div class="quote-author" id="quote-author"></div>
+                    </div>
+                </div>
+
+                <div class="progress-card" id="lesson-card">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <span class="card-icon">📚</span>
+                            Today's Learning
+                        </h2>
+                    </div>
+                    <div class="card-content">
+                        <div class="lesson-content" id="lesson-content"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    return html_template
+
+def generate_html_news_template(news_content):
+    html_template = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            @font-face {{
+                font-family: 'SF Pro Display';
+                src: local('SF Pro Display'),
+                     url('https://sf.abarba.me/SF-Pro-Display-Regular.otf');
+            }}
+            @font-face {{
+                font-family: 'SF Pro Display';
+                font-weight: 600;
+                src: local('SF Pro Display Semibold'),
+                     url('https://sf.abarba.me/SF-Pro-Display-Semibold.otf');
+            }}
+            body {{
+                font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+                line-height: 1.5;
+                color: #1d1d1f;
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #fbfbfd;
+                -webkit-font-smoothing: antialiased;
+            }}
+            .container {{
+                background: linear-gradient(to bottom, #ffffff, #fafafa);
+                border-radius: 20px;
+                padding: 40px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            }}
+            .header {{
+                text-align: center;
+                margin-bottom: 40px;
+                padding-bottom: 30px;
+                border-bottom: 1px solid #e5e5e7;
+            }}
+            h1 {{
+                font-size: 48px;
+                font-weight: 600;
+                margin-bottom: 16px;
+                color: #1d1d1f;
+                letter-spacing: -0.003em;
+            }}
+            .subtitle {{
+                font-size: 20px;
+                color: #86868b;
+                font-weight: 400;
+            }}
+            .date {{
+                display: inline-block;
+                padding: 8px 16px;
+                background: #f5f5f7;
+                border-radius: 8px;
+                color: #86868b;
+                font-size: 17px;
+            }}
+            .news-grid {{
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 24px;
+                margin-top: 32px;
+            }}
+            .news-card {{
+                background: white;
+                border-radius: 16px;
+                overflow: hidden;
+                transition: transform 0.3s ease, box-shadow 0.3s ease;
+                border: 1px solid #e5e5e7;
+            }}
+            .news-card:hover {{
+                transform: translateY(-4px);
+                box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            }}
+            .card-header {{
+                padding: 20px;
+                background: linear-gradient(135deg, #f8f8fa, #f2f2f4);
+                border-bottom: 1px solid #e5e5e7;
+            }}
+            .card-title {{
+                font-size: 24px;
+                font-weight: 600;
+                color: #1d1d1f;
+                margin: 0;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }}
+            .card-icon {{
+                font-size: 24px;
+            }}
+            .card-content {{
+                padding: 24px;
+                font-size: 16px;
+                line-height: 1.6;
+                color: #1d1d1f;
+            }}
+            .bullet-point {{
+                display: flex;
+                align-items: flex-start;
+                margin-bottom: 16px;
+                padding: 12px;
+                background: #f5f5f7;
+                border-radius: 8px;
+                transition: transform 0.2s ease;
+            }}
+            .bullet-point:hover {{
+                transform: translateX(4px);
+            }}
+            .bullet-number {{
+                flex-shrink: 0;
+                width: 24px;
+                height: 24px;
+                background: #06c;
+                color: white;
+                border-radius: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin-right: 12px;
+                font-weight: 600;
+                font-size: 14px;
+            }}
+            .bullet-text {{
+                flex-grow: 1;
+            }}
+            @media (max-width: 768px) {{
+                .container {{
+                    padding: 24px;
+                }}
+                .news-grid {{
+                    grid-template-columns: 1fr;
+                }}
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Daily News Briefing</h1>
+                <div class="subtitle">Your curated news summary</div>
+                <div class="date">{datetime.now().strftime("%B %d, %Y")}</div>
+            </div>
+            
+            <div class="news-grid">
+                <div class="news-card">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <span class="card-icon">💻</span>
+                            Technology
+                        </h2>
+                    </div>
+                    <div class="card-content">
+                        {format_news_section(news_content, "Tech News Update")}
+                    </div>
+                </div>
+
+                <div class="news-card">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <span class="card-icon">📈</span>
+                            Financial Markets
+                        </h2>
+                    </div>
+                    <div class="card-content">
+                        {format_news_section(news_content, "Financial Markets News Update")}
+                    </div>
+                </div>
+
+                <div class="news-card">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <span class="card-icon">🇮🇳</span>
+                            India News
+                        </h2>
+                    </div>
+                    <div class="card-content">
+                        {format_news_section(news_content, "India News Update")}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    return html_template
+
+def format_news_section(content, section_title):
+    # Split the content into sections
+    sections = content.split("\n\n")
+    
+    # Find the section we want
+    for section in sections:
+        if section_title in section:
+            # Split the points and format them
+            points = section.split("\n")[1:]  # Skip the section title
+            formatted_points = []
+            for i, point in enumerate(points, 1):
+                if point.strip():  # Only include non-empty points
+                    formatted_points.append(f'''
+                        <div class="bullet-point">
+                            <div class="bullet-number">{i}</div>
+                            <div class="bullet-text">{point.strip("- ")}</div>
+                        </div>
+                    ''')
+            return "\n".join(formatted_points)
+    return ""
+
+def send_email(subject, message, is_html=False):
     sender_email = yahoo_id
     receiver_email = "katam.dinesh@hotmail.com"
     password = yahoo_app_password
@@ -379,7 +896,10 @@ def send_email(subject, message):
     email_message["To"] = receiver_email
     email_message["Subject"] = subject
 
-    email_message.attach(MIMEText(message, "plain"))
+    if is_html:
+        email_message.attach(MIMEText(message, "html"))
+    else:
+        email_message.attach(MIMEText(message, "plain"))
 
     try:
         server = smtplib.SMTP('smtp.mail.yahoo.com', 587)
@@ -406,45 +926,58 @@ def time_left_in_year():
     return days_completed, weeks_completed, days_left, weeks_left, percent_days_left
 
 if __name__ == "__main__":
-
     days_completed, weeks_completed, days_left, weeks_left, percent_days_left = time_left_in_year()
-    year_progress_message = generate_progress_message(days_completed, weeks_completed, days_left, weeks_left, percent_days_left)
-    # print(year_progress_message)
-
+    
+    # Get quote and lesson
     random_personality = get_random_personality()
     quote = generate_quote(random_personality)
-    year_progress_message_with_quote = f"{year_progress_message}\n\nQuote of the Day: {quote}"
-
     lesson_learned = get_random_lesson()
-    year_progress_message_with_quote_with_lesson = f"{year_progress_message_with_quote}\n\nLesson Learned: {lesson_learned}"
-    # print(year_progress_message_with_quote_with_lesson)
     
+    # Generate HTML progress report
+    year_progress_html = generate_html_progress_message(days_completed, weeks_completed, days_left, weeks_left, percent_days_left)
+    
+    # Replace the placeholder divs with actual content
+    year_progress_html = year_progress_html.replace(
+        '<div class="quote-text" id="quote-text"></div>',
+        f'<div class="quote-text">{quote}</div>'
+    )
+    year_progress_html = year_progress_html.replace(
+        '<div class="quote-author" id="quote-author"></div>',
+        f'<div class="quote-author">— {random_personality}</div>'
+    )
+    year_progress_html = year_progress_html.replace(
+        '<div class="lesson-content" id="lesson-content"></div>',
+        f'<div class="lesson-content">{lesson_learned}</div>'
+    )
+    
+    # Send single HTML progress report
     year_progress_subject = "Year Progress Report 📅"
-    send_email(year_progress_subject, year_progress_message_with_quote_with_lesson)
+    send_email(year_progress_subject, year_progress_html, is_html=True)
 
+    # Generate and convert progress report to speech
     year_progress_message_prompt = f"""
     Here is a year progress report for {datetime.now().strftime("%B %d, %Y")}:
-
-    {year_progress_message}
-
-    Please analyze the report and summarize it in a manner suitable for a voice assistant to deliver as a daily update.
     
-    Include a random quote from {random_personality} to inspire Dinesh for the day.
+    Days completed: {days_completed}
+    Weeks completed: {weeks_completed:.1f}
+    Days remaining: {days_left}
+    Weeks remaining: {weeks_left:.1f}
+    Year Progress: {100 - percent_days_left:.1f}% completed
 
-    Conclude the message with a lesson learned from the memory palace search results: {lesson_learned}
+    Quote of the day from {random_personality}:
+    {quote}
 
+    Today's lesson:
+    {lesson_learned}
     """
 
     year_progress_gpt_response = generate_gpt_response(year_progress_message_prompt)
-    # print(f"\nGPT Response:\n {year_progress_gpt_response}")
-
-    # Convert the year progress report to speech
     yearprogress_tts_output_path = "year_progress_report.mp3"
     model_name = random.choice(model_names)
     text_to_speech_nospeak(year_progress_gpt_response, yearprogress_tts_output_path, model_name=model_name)
 
-    # News Updates
-    news_update_subject = "News Updates 📰"
+    # News Updates with HTML formatting
+    news_update_subject = "📰 Your Daily News Briefing"
     technews = "Latest news in technology"
     news_update_tech = internet_connected_chatbot(technews, [], model_name, max_tokens, temperature)
     usanews = "Latest news in Financial Markets"
@@ -452,7 +985,6 @@ if __name__ == "__main__":
     india_news = "Latest news from India"
     news_update_india = internet_connected_chatbot(india_news, [], model_name, max_tokens, temperature)
 
-    # Collate all news updates and send them in an email after processing them with gpt
     news_updates = f"""
     Here are the latest news updates in various categories for {datetime.now().strftime("%B %d, %Y")}:
 
@@ -465,16 +997,13 @@ if __name__ == "__main__":
     India News Update:
     {news_update_india}
 
-    Analyze the news updates and provide a brief 5 key-point summary for each news category. Keep the summary very concise and include only the headline news.
+    For each news category above, provide exactly 5 key bullet points. Each point should be concise (1-2 sentences) and focus on the most important headlines. Start each point with a dash (-).
     """
 
-    # print(f"\nDetailed News Updates:\n {news_updates}")
-
     news_gpt_response = generate_gpt_response(news_updates)
-    # print(f"\nSummarized News Update:\n {news_gpt_response}")
+    news_html = generate_html_news_template(news_gpt_response)
+    send_email(news_update_subject, news_html, is_html=True)
     
-    send_email(news_update_subject, news_gpt_response)
-
     # Convert the news updates to speech
     news_tts_output_path = "news_update_report.mp3"
     model_name = random.choice(model_names)
