@@ -405,7 +405,6 @@ def generate_html_progress_message(days_completed, weeks_completed, days_left, w
     progress_filled_length = int(progress_bar_length * (100 - percent_days_left) / 100)
     progress_bar = progress_bar_full * progress_filled_length + progress_bar_empty * (progress_bar_length - progress_filled_length)
 
-    # HTML template with enhanced card-based design
     html_template = f"""
     <!DOCTYPE html>
     <html>
@@ -457,21 +456,13 @@ def generate_html_progress_message(days_completed, weeks_completed, days_left, w
                 font-size: 20px;
                 color: #86868b;
                 font-weight: 400;
-                margin-bottom: 8px;
             }}
             .date-weather {{
                 display: flex;
                 justify-content: center;
-                align-items: center;
-                gap: 12px;
-                margin-top: 16px;
-            }}
-            .date-weather span {{
-                padding: 8px 16px;
-                background: #f5f5f7;
-                border-radius: 8px;
+                gap: 16px;
+                margin-top: 8px;
                 color: #86868b;
-                font-size: 17px;
             }}
             .progress-grid {{
                 display: grid;
@@ -509,67 +500,91 @@ def generate_html_progress_message(days_completed, weeks_completed, days_left, w
             }}
             .card-content {{
                 padding: 24px;
+                font-size: 16px;
+                line-height: 1.6;
+                color: #1d1d1f;
             }}
             .progress-item {{
                 margin-bottom: 16px;
-                padding: 12px;
-                background: #f5f5f7;
-                border-radius: 8px;
-                transition: transform 0.2s ease;
-            }}
-            .progress-item:hover {{
-                transform: translateX(4px);
             }}
             .progress-label {{
-                font-size: 15px;
-                color: #86868b;
+                font-weight: 600;
+                color: #515154;
                 margin-bottom: 4px;
+            }}
+            .progress-bar {{
+                background: #f5f5f7;
+                border-radius: 8px;
+                overflow: hidden;
+                position: relative;
+                height: 24px;
+                margin-bottom: 8px;
+            }}
+            .progress-bar::before {{
+                content: '';
+                display: block;
+                height: 100%;
+                background: #06c;
+                width: {100 - percent_days_left:.2f}%;
             }}
             .progress-value {{
                 font-size: 20px;
+                font-weight: 600;
                 color: #1d1d1f;
-                font-weight: 500;
-            }}
-            .progress-bar {{
-                font-family: monospace;
-                font-size: 20px;
-                letter-spacing: 2px;
-                margin: 8px 0;
-                padding: 12px;
-                background: white;
-                border-radius: 8px;
-                border: 1px solid #e5e5e7;
             }}
             .highlight {{
-                display: inline-block;
-                padding: 4px 12px;
-                background: #06c;
-                color: white;
-                border-radius: 6px;
-                font-weight: 500;
+                color: #06c;
+                font-weight: 600;
             }}
             .quote-text {{
-                font-size: 20px;
-                color: #1d1d1f;
+                font-size: 18px;
                 font-style: italic;
-                line-height: 1.6;
-                margin-bottom: 16px;
+                color: #515154;
+                margin-bottom: 8px;
             }}
             .quote-author {{
                 font-size: 16px;
-                color: #86868b;
-                font-weight: 500;
+                font-weight: 600;
+                color: #1d1d1f;
             }}
             .lesson-content {{
                 font-size: 16px;
                 line-height: 1.6;
                 color: #1d1d1f;
             }}
+            .lesson-section {{
+                margin-bottom: 24px;
+            }}
+            .lesson-section:last-child {{
+                margin-bottom: 0;
+            }}
+            .lesson-title {{
+                font-size: 18px;
+                font-weight: 600;
+                color: #1d1d1f;
+                margin-bottom: 12px;
+            }}
+            .lesson-paragraph {{
+                background: #f5f5f7;
+                padding: 16px;
+                border-radius: 8px;
+                margin-bottom: 16px;
+            }}
+            .lesson-paragraph:last-child {{
+                margin-bottom: 0;
+            }}
+            .historical-note {{
+                border-left: 4px solid #06c;
+                padding-left: 16px;
+                margin-top: 16px;
+                font-style: italic;
+                color: #515154;
+            }}
             @media (max-width: 768px) {{
                 .container {{
                     padding: 24px;
                 }}
-                .progress-grid {{
+                .news-grid {{
                     grid-template-columns: 1fr;
                 }}
             }}
@@ -936,6 +951,27 @@ if __name__ == "__main__":
     # Generate HTML progress report
     year_progress_html = generate_html_progress_message(days_completed, weeks_completed, days_left, weeks_left, percent_days_left)
     
+    # Split lesson content into paragraphs and format them
+    lesson_paragraphs = lesson_learned.split('\n\n')
+    formatted_lesson = '<div class="lesson-section">'
+    
+    # Process each paragraph
+    for paragraph in lesson_paragraphs:
+        if paragraph.strip():
+            # Check if this is a historical note
+            if any(marker in paragraph.lower() for marker in ["historical", "in history", "historically", "in ancient", "years ago", "century"]):
+                formatted_lesson += f'<div class="historical-note">{paragraph.strip()}</div>'
+            else:
+                formatted_lesson += f'<div class="lesson-paragraph">{paragraph.strip()}</div>'
+    
+    formatted_lesson += '</div>'
+    
+    # Replace the placeholder div with formatted content
+    year_progress_html = year_progress_html.replace(
+        '<div class="lesson-content" id="lesson-content"></div>',
+        f'<div class="lesson-content">{formatted_lesson}</div>'
+    )
+    
     # Replace the placeholder divs with actual content
     year_progress_html = year_progress_html.replace(
         '<div class="quote-text" id="quote-text"></div>',
@@ -944,10 +980,6 @@ if __name__ == "__main__":
     year_progress_html = year_progress_html.replace(
         '<div class="quote-author" id="quote-author"></div>',
         f'<div class="quote-author">— {random_personality}</div>'
-    )
-    year_progress_html = year_progress_html.replace(
-        '<div class="lesson-content" id="lesson-content"></div>',
-        f'<div class="lesson-content">{lesson_learned}</div>'
     )
     
     # Send single HTML progress report
