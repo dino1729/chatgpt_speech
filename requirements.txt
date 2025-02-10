@@ -38,3 +38,4 @@ ffmpeg-python
 pytube
 pinecone-client
 lxml_html_clean
+gpt_researcher
