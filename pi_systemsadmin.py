@@ -1,6 +1,7 @@
 import subprocess
 import time
-from helper_functions.chat_generation_with_internet import internet_connected_chatbot
+import random
+from helper_functions.chat_generation import generate_chat
 
 def run_diagnostic_command(command, description):
     try:
@@ -42,15 +43,19 @@ def analyze_with_llm(diagnostics):
         4. Any critical errors needing immediate attention
         Format response with clear headings and bullet points."""
     }]
+    conversation = system_prompt.copy()
     
     user_query = f"Raspberry Pi Performance Diagnostics:\n{diagnostics}"
+    conversation.append(({"role": "user", "content": user_query}))
+
+    model_name = random.choice(["GROQ", "GEMINI", "GPT4", "GEMINI_THINKING"])
+    print(f"Model: {model_name}")
     
-    return internet_connected_chatbot(
-        user_query, 
-        system_prompt, 
-        model_name="GEMINI",  # or "GROQ"
-        max_tokens=1500,
-        temperature=0.3
+    return generate_chat(
+        model_name,
+        conversation,
+        temperature=0.3, 
+        max_tokens=1500
     )
 
 if __name__ == '__main__':

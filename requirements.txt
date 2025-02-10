@@ -20,9 +20,9 @@ llama-index-tools-wikipedia
 pyowm
 llama-index==0.12.4
 langchain>=0.0.329
-mediapipe
+# mediapipe
 pvporcupine
-pyaudio
+# pyaudio
 # struct
 webrtcvad
 wave
