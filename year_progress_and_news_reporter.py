@@ -276,6 +276,90 @@ def generate_gpt_response(user_message):
 
     return message
 
+def generate_gpt_response_newsletter(user_message):
+    client = OpenAIAzure(
+        api_key=azure_api_key,
+        azure_endpoint=azure_api_base,
+        api_version=azure_chatapi_version,
+    )
+    syspromptmessage = f"""
+    You are EDITH, or "Even Dead, I'm The Hero," a world-class AI assistant designed by Tony Stark. For the newsletter format, follow these rules strictly:
+
+    1. Each section must have exactly 5 news items
+    2. Format each item exactly as: "- [Source] Headline and description | Date: MM/DD/YYYY | URL | Commentary: Brief insight"
+    3. Use only real sources (e.g., [Reuters], [Bloomberg], [TechCrunch])
+    4. For URLs:
+       - NEVER create placeholder or fake URLs
+       - ONLY use URLs that appear in the source material
+       - If a URL is not provided in the source, omit the URL part entirely
+    5. Keep descriptions concise but informative
+    6. Always include a short, insightful commentary
+    7. Ensure dates are in MM/DD/YYYY format and are current/recent
+    8. Maintain consistent formatting using the pipe (|) separator
+
+    Example of correct format with real URL:
+    - [Reuters] Major tech breakthrough announced | Date: 02/10/2024 | https://real-url-from-source.com/article | Commentary: This could reshape the industry
+
+    Example of correct format when URL is not available:
+    - [Reuters] Major tech breakthrough announced | Date: 02/10/2024 | Commentary: This could reshape the industry
+    """
+    system_prompt = [{
+        "role": "system",
+        "content": syspromptmessage
+    }]
+    conversation = system_prompt.copy()
+    conversation.append({"role": "user", "content": str(user_message)})
+    response = client.chat.completions.create(
+        model=azure_gpt4_deploymentid,
+        messages=conversation,
+        max_tokens=2048,
+        temperature=0.3,
+    )
+    message = response.choices[0].message.content
+    conversation.append({"role": "assistant", "content": str(message)})
+    return message
+
+def generate_gpt_response_voicebot(user_message):
+    client = OpenAIAzure(
+        api_key=azure_api_key,
+        azure_endpoint=azure_api_base,
+        api_version=azure_chatapi_version,
+    )
+    syspromptmessage = f"""
+    You are EDITH, speaking through a voicebot. For the voice format:
+    1. Use conversational, natural speaking tone (e.g., "Today in tech news..." or "Moving on to financial markets...")
+    2. Break down complex information into simple, clear sentences
+    3. Use verbal transitions between topics (e.g., "Now, let's look at..." or "In other news...")
+    4. Avoid technical jargon unless necessary
+    5. Keep points brief and easy to follow
+    6. Never mention URLs, citations, or technical markers
+    7. Use natural date formats (e.g., "today" or "yesterday" instead of MM/DD/YYYY)
+    8. Focus on the story and its impact rather than sources
+    9. End each section with a brief overview or key takeaway
+    10. Use listener-friendly phrases like "As you might have heard" or "Interestingly"
+    """
+    system_prompt = [{
+        "role": "system",
+        "content": syspromptmessage
+    }]
+    conversation = system_prompt.copy()
+    
+    # Transform the input message to be more voice-friendly
+    voice_friendly_message = user_message.replace("- News headline", "")
+    voice_friendly_message = voice_friendly_message.replace(" | [Source] | Date: MM/DD/YYYY | URL | Commentary:", "")
+    voice_friendly_message = voice_friendly_message.replace("For each category below, provide exactly 5 key bullet points. Each point should follow this format:", "")
+    
+    conversation.append({"role": "user", "content": voice_friendly_message})
+    response = client.chat.completions.create(
+        model=azure_gpt4_deploymentid,
+        messages=conversation,
+        max_tokens=2048,
+        temperature=0.4,
+    )
+    message = response.choices[0].message.content
+    conversation.append({"role": "assistant", "content": str(message)})
+    return message
+
 def generate_quote(random_personality):
     client = OpenAIAzure(
         api_key=azure_api_key,
@@ -819,6 +903,37 @@ def generate_html_news_template(news_content):
             .bullet-text {{
                 flex-grow: 1;
             }}
+            .news-source {{
+                color: #06c;
+                font-size: 14px;
+                margin-top: 8px;
+                display: block;
+            }}
+            .news-source:hover {{
+                text-decoration: underline;
+            }}
+            .news-date {{
+                color: #86868b;
+                font-size: 14px;
+                margin-top: 4px;
+                display: block;
+            }}
+            .news-commentary {{
+                font-style: italic;
+                color: #515154;
+                margin-top: 8px;
+                padding-left: 12px;
+                border-left: 3px solid #06c;
+            }}
+            .news-citation {{
+                display: inline-block;
+                padding: 2px 6px;
+                background: #e5e5e7;
+                border-radius: 4px;
+                font-size: 12px;
+                color: #515154;
+                margin-right: 8px;
+            }}
             @media (max-width: 768px) {{
                 .container {{
                     padding: 24px;
@@ -881,25 +996,63 @@ def generate_html_news_template(news_content):
     return html_template
 
 def format_news_section(content, section_title):
-    # Split the content into sections
-    sections = content.split("\n\n")
+    # Split content by section headers (##)
+    sections = content.split("##")
+    formatted_points = []
+    section_content = ""
     
-    # Find the section we want
+    # Find the relevant section
     for section in sections:
-        if section_title in section:
-            # Split the points and format them
-            points = section.split("\n")[1:]  # Skip the section title
-            formatted_points = []
-            for i, point in enumerate(points, 1):
-                if point.strip():  # Only include non-empty points
-                    formatted_points.append(f'''
-                        <div class="bullet-point">
-                            <div class="bullet-number">{i}</div>
-                            <div class="bullet-text">{point.strip("- ")}</div>
+        if section_title.lower() in section.lower():
+            section_content = section
+            break
+    
+    if section_content:
+        # Split into lines and filter out empty lines
+        points = [line.strip() for line in section_content.split("\n") if line.strip() and not line.strip().endswith("Update:")]
+        
+        for i, point in enumerate(points, 1):
+            if point.startswith("- "):
+                point = point[2:]  # Remove the "- " prefix
+            
+            # Initialize components
+            news_text = point
+            url = ""
+            date = ""
+            citation = ""
+            commentary = ""
+            
+            # Split by pipe and process each component
+            if " | " in point:
+                components = point.split(" | ")
+                news_text = components[0]
+                
+                for component in components[1:]:
+                    component = component.strip()
+                    if component.startswith("[") and component.endswith("]"):
+                        citation = component.strip("[]")
+                    elif component.startswith("http"):
+                        url = component
+                    elif component.startswith("Date:"):
+                        date = component.replace("Date:", "").strip()
+                    elif component.startswith("Commentary:"):
+                        commentary = component.replace("Commentary:", "").strip()
+            
+            if news_text or url or date or citation or commentary:  # Only add if we have some content
+                formatted_points.append(f'''
+                    <div class="bullet-point">
+                        <div class="bullet-number">{i}</div>
+                        <div class="bullet-text">
+                            {f'<span class="news-citation">{citation}</span>' if citation else ''}
+                            {news_text}
+                            {f'<span class="news-date">{date}</span>' if date else ''}
+                            {f'<a href="{url}" class="news-source" target="_blank">Read more →</a>' if url else ''}
+                            {f'<div class="news-commentary">{commentary}</div>' if commentary else ''}
                         </div>
-                    ''')
-            return "\n".join(formatted_points)
-    return ""
+                    </div>
+                ''')
+    
+    return "\n".join(formatted_points) if formatted_points else "<div class='bullet-point'>No updates available.</div>"
 
 def send_email(subject, message, is_html=False):
     sender_email = yahoo_id
@@ -939,6 +1092,15 @@ def time_left_in_year():
     percent_days_left = (days_left / total_days_in_year) * 100
 
     return days_completed, weeks_completed, days_left, weeks_left, percent_days_left
+
+def save_message_to_file(message, filename):
+    try:
+        os.makedirs(os.path.join("bing_data", os.path.dirname(filename)), exist_ok=True)
+        with open(os.path.join("bing_data", filename), 'w', encoding='utf-8') as file:
+            file.write(message)
+        print(f"Message saved successfully to {os.path.join('bing_data', filename)}")
+    except Exception as e:
+        print(f"Failed to save message to file: {e}")
 
 if __name__ == "__main__":
     days_completed, weeks_completed, days_left, weeks_left, percent_days_left = time_left_in_year()
@@ -982,6 +1144,29 @@ if __name__ == "__main__":
         f'<div class="quote-author">— {random_personality}</div>'
     )
     
+    # Generate and convert progress report to speech
+    year_progress_message_prompt = f"""
+    Here is a year progress report for {datetime.now().strftime("%B %d, %Y")}:
+    
+    Days completed: {days_completed}
+    Weeks completed: {weeks_completed:.1f}
+    Days remaining: {days_left}
+    Weeks remaining: {weeks_left:.1f}
+    Year Progress: {100 - percent_days_left:.1f}% completed
+
+    Quote of the day from {random_personality}:
+    {quote}
+
+    Today's lesson:
+    {lesson_learned}
+    """
+
+    year_progress_gpt_response = generate_gpt_response(year_progress_message_prompt)
+
+    # Save year progress message and HTML to files
+    save_message_to_file(year_progress_gpt_response, "year_progress_report.txt")
+    save_message_to_file(year_progress_html, "year_progress_report.html")
+    
     # Send single HTML progress report
     year_progress_subject = "Year Progress Report 📅"
     send_email(year_progress_subject, year_progress_html, is_html=True)
@@ -1008,17 +1193,23 @@ if __name__ == "__main__":
     model_name = random.choice(model_names)
     text_to_speech_nospeak(year_progress_gpt_response, yearprogress_tts_output_path, model_name=model_name)
 
-    # News Updates with HTML formatting
+    # News Updates with different formats for newsletter and voicebot
     news_update_subject = "📰 Your Daily News Briefing"
     technews = "Latest news in technology"
-    news_update_tech = internet_connected_chatbot(technews, [], model_name, max_tokens, temperature)
+    news_update_tech = internet_connected_chatbot(technews, [], model_name, max_tokens, temperature, fast_response=False)
+    save_message_to_file(news_update_tech, "news_tech_report.txt")
     usanews = "Latest news in Financial Markets"
-    news_update_usa = internet_connected_chatbot(usanews, [], model_name, max_tokens, temperature)
+    news_update_usa = internet_connected_chatbot(usanews, [], model_name, max_tokens, temperature, fast_response=False)
+    save_message_to_file(news_update_usa, "news_usa_report.txt")
     india_news = "Latest news from India"
-    news_update_india = internet_connected_chatbot(india_news, [], model_name, max_tokens, temperature)
+    news_update_india = internet_connected_chatbot(india_news, [], model_name, max_tokens, temperature, fast_response=False)
+    save_message_to_file(news_update_india, "news_india_report.txt")
 
-    news_updates = f"""
-    Here are the latest news updates in various categories for {datetime.now().strftime("%B %d, %Y")}:
+    # Newsletter format
+    newsletter_updates = f'''
+    Generate a concise news summary for {datetime.now().strftime("%B %d, %Y")}, using ONLY real news and URLs from the provided source material below. Do not create placeholder or fake URLs.
+
+    Use the source text below to create your summary:
 
     Tech News Update:
     {news_update_tech}
@@ -1029,14 +1220,57 @@ if __name__ == "__main__":
     India News Update:
     {news_update_india}
 
-    For each news category above, provide exactly 5 key bullet points. Each point should be concise (1-2 sentences) and focus on the most important headlines. Start each point with a dash (-).
+    Format requirements:
+    1. Each section must have exactly 5 points
+    2. Use this exact format for items with URLs:
+       - [Source] Headline and brief description | Date: MM/DD/YYYY | Actual URL from source | Commentary: Brief insight
+    3. Use this format if no URL is available:
+       - [Source] Headline and brief description | Date: MM/DD/YYYY | Commentary: Brief insight
+    4. Only include URLs that are explicitly mentioned in the source text
+    5. Keep the original source URLs intact - do not modify them
+
+    Please format the content into these three sections:
+    ## Tech News Update:
+    (5 points from tech news using format above)
+
+    ## Financial Markets News Update:
+    (5 points from financial news using format above)
+
+    ## India News Update:
+    (5 points from India news using format above)
+    '''
+
+    # Voice format
+    voicebot_updates = f"""
+    Here are today's key updates across technology, financial markets, and India:
+    
+    Technology Updates:
+    {news_update_tech}
+
+    Financial Market Headlines:
+    {news_update_usa}
+
+    Latest from India:
+    {news_update_india}
+    
+    Please present this information in a natural, conversational way suitable for speaking.
     """
 
-    news_gpt_response = generate_gpt_response(news_updates)
-    news_html = generate_html_news_template(news_gpt_response)
+    # Generate separate responses for newsletter and voicebot
+    news_newsletter_response = generate_gpt_response_newsletter(newsletter_updates)
+    news_voicebot_response = generate_gpt_response_voicebot(voicebot_updates)
+    
+    # Save news responses to files
+    save_message_to_file(news_newsletter_response, "news_newsletter_report.txt")
+    save_message_to_file(news_voicebot_response, "news_voicebot_report.txt")
+    news_html = generate_html_news_template(news_newsletter_response)
+    save_message_to_file(news_html, "news_newsletter_report.html")
+    
+    # Send HTML newsletter
+    news_html = generate_html_news_template(news_newsletter_response)
     send_email(news_update_subject, news_html, is_html=True)
     
-    # Convert the news updates to speech
+    # Convert the voicebot response to speech
     news_tts_output_path = "news_update_report.mp3"
     model_name = random.choice(model_names)
-    text_to_speech_nospeak(news_gpt_response, news_tts_output_path, model_name=model_name)
+    text_to_speech_nospeak(news_voicebot_response, news_tts_output_path, model_name=model_name)

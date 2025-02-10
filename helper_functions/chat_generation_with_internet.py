@@ -247,7 +247,7 @@ def get_bing_results(query, num=10):
 
     return answer
 
-def internet_connected_chatbot(query, history, model_name, max_tokens, temperature):
+def internet_connected_chatbot(query, history, model_name, max_tokens, temperature, fast_response=True):
     
     assistant_reply = "Sorry, I couldn't generate a response. Please try again."
     try:
@@ -259,18 +259,22 @@ def internet_connected_chatbot(query, history, model_name, max_tokens, temperatu
         conversation.append({"role": "user", "content": query})
 
         try:
-            # If the query contains any of the keywords, perform a Bing search
+            # If the query contains any of the keywords, perform a search
             if any(keyword in query.lower() for keyword in keywords):
                 # If the query contains news
                 if "news" in query.lower():
-                    # assistant_reply = get_bing_news_results(query)
-                    assistant_reply = gpt_researcher(query)
+                    if fast_response:
+                        assistant_reply = get_bing_news_results(query)
+                    else:
+                        assistant_reply = gpt_researcher(query)
                 # If the query contains weather
                 elif "weather" in query.lower():
                     assistant_reply = get_weather_data(query)
                 else:
-                    # assistant_reply = get_bing_results(query)
-                    assistant_reply = gpt_researcher(query)
+                    if fast_response:
+                        assistant_reply = get_bing_results(query)
+                    else:
+                        assistant_reply = gpt_researcher(query)
             else:
                 # Generate a response using the selected model
                 assistant_reply = generate_chat(model_name, conversation, temperature, max_tokens)
