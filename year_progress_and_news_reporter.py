@@ -1195,13 +1195,13 @@ if __name__ == "__main__":
 
     # News Updates with different formats for newsletter and voicebot
     news_update_subject = "📰 Your Daily News Briefing"
-    technews = "Latest news in technology"
+    technews = f"Technology news from the past three days (current date: {datetime.now().strftime('%Y-%m-%d')})"
     news_update_tech = internet_connected_chatbot(technews, [], model_name, max_tokens, temperature, fast_response=False)
     save_message_to_file(news_update_tech, "news_tech_report.txt")
-    usanews = "Latest news in Financial Markets"
+    usanews = "Latest news in Financial Markets from the past three days (current date: {datetime.now().strftime('%Y-%m-%d')})"
     news_update_usa = internet_connected_chatbot(usanews, [], model_name, max_tokens, temperature, fast_response=False)
     save_message_to_file(news_update_usa, "news_usa_report.txt")
-    india_news = "Latest news from India"
+    india_news = "Latest news from India from the past three days (current date: {datetime.now().strftime('%Y-%m-%d')})"
     news_update_india = internet_connected_chatbot(india_news, [], model_name, max_tokens, temperature, fast_response=False)
     save_message_to_file(news_update_india, "news_india_report.txt")
 
