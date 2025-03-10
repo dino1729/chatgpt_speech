@@ -1193,15 +1193,17 @@ if __name__ == "__main__":
     model_name = random.choice(model_names)
     text_to_speech_nospeak(year_progress_gpt_response, yearprogress_tts_output_path, model_name=model_name)
 
-    # News Updates with different formats for newsletter and voicebot
+    # News updates with different formats for the newsletter and voicebot
     news_update_subject = "📰 Your Daily News Briefing"
-    technews = f"Technology news from the past three days (current date: {datetime.now().strftime('%Y-%m-%d')})"
+    technews = f"Provide a detailed summary of today's technology news for {datetime.now().strftime('%Y-%m-%d')}. Include major developments, innovative breakthroughs, and significant industry updates."
     news_update_tech = internet_connected_chatbot(technews, [], model_name, max_tokens, temperature, fast_response=False)
     save_message_to_file(news_update_tech, "news_tech_report.txt")
-    usanews = "Latest news in Financial Markets from the past three days (current date: {datetime.now().strftime('%Y-%m-%d')})"
+    
+    usanews = f"Provide a comprehensive overview of today's financial markets news for {datetime.now().strftime('%Y-%m-%d')}. Emphasize market trends, stock performance, economic indicators, and key financial events."
     news_update_usa = internet_connected_chatbot(usanews, [], model_name, max_tokens, temperature, fast_response=False)
     save_message_to_file(news_update_usa, "news_usa_report.txt")
-    india_news = "Latest news from India from the past three days (current date: {datetime.now().strftime('%Y-%m-%d')})"
+    
+    india_news = f"Provide a detailed summary of today's news from India for {datetime.now().strftime('%Y-%m-%d')}. Cover political developments, economic news, social events, and cultural stories."
     news_update_india = internet_connected_chatbot(india_news, [], model_name, max_tokens, temperature, fast_response=False)
     save_message_to_file(news_update_india, "news_india_report.txt")
 
