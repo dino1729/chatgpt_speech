@@ -22,6 +22,10 @@ import subprocess
 import platform
 import io
 
+# Import LLM audio functions from simple_voicebot.py
+# This provides: encode_audio, decode_audio, send_audio_to_gpt methods
+from simple_voicebot import SimpleVoiceBot
+
 # Raspberry Pi specific libraries
 try:
     import RPi.GPIO as GPIO
@@ -91,46 +95,17 @@ def update_led(led_state, color=None, brightness=1.0):
     except Exception as e:
         print(f"LED error: {e}")
 
-class SimpleVoiceBotRPi:
+class SimpleVoiceBotRPi(SimpleVoiceBot):
     def __init__(self):
         """Initialize the RPi voicebot with OpenAI client and configuration."""
-        try:
-            openai_api_key = os.getenv('OPENAI_API_KEY')
-            openai_base_url = os.getenv('OPENAI_BASE_URL')
-            
-            if openai_api_key and openai_base_url:
-                print(f"Using custom OpenAI API endpoint: {openai_base_url}")
-                print("⚠️  Note: Custom endpoints may not support GPT-4o audio features.")
-                print("   The bot will automatically fall back to transcription + TTS if needed.")
-                self.client = OpenAI(
-                    api_key=openai_api_key,
-                    base_url=openai_base_url
-                )
-            elif openai_api_key:
-                print("Using direct OpenAI API")
-                self.client = OpenAI(api_key=openai_api_key)
-            else:
-                raise ValueError(
-                    "No OpenAI API configuration found. Please set OPENAI_API_KEY environment variable "
-                    "or create a config.py file with azure_api_key and azure_api_base."
-                )
-        except Exception as e:
-            logger.error(f"Failed to initialize OpenAI client: {e}")
-            print("\nAPI Configuration Help:")
-            print("1. Set environment variable: export OPENAI_API_KEY='your-key-here'")
-            print("2. Or create config.py with azure_api_key and azure_api_base")
-            print("3. Make sure your API key is valid and has sufficient credits")
-            raise
+        # Initialize parent class
+        super().__init__()
         
+        # Override audio settings for RPi
         self.audio_format = 'wav' # arecord/aplay typically use wav
         self.rpi_audio_file = "user_audio.wav" # File for arecord
         self.audio_device = None  # Will be set during initialization
         
-        self.model = "gpt-4o-mini-audio-preview"
-        self.voice = "alloy"
-        
-        self.conversation_history = []
-
         # GPIO setup only if available
         if IS_RASPBERRY_PI and GPIO_AVAILABLE:
             self.BUTTON_PIN = 23
@@ -165,14 +140,8 @@ class SimpleVoiceBotRPi:
         print(f"✅ Audio processed from {self.rpi_audio_file}")
         return audio_bytes
     
-    def encode_audio(self, audio_bytes: bytes) -> str:
-        return base64.b64encode(audio_bytes).decode('utf-8')
-    
-    def decode_audio(self, base64_audio: str) -> bytes:
-        return base64.b64decode(base64_audio)
-    
     def play_audio(self, audio_bytes: bytes):
-        """Play audio from bytes using aplay."""
+        """Play audio from bytes using aplay (RPi-specific override)."""
         temp_output_path = "temp_response.wav"
         
         try:
@@ -195,98 +164,6 @@ class SimpleVoiceBotRPi:
             if os.path.exists(temp_output_path):
                 os.remove(temp_output_path)
     
-    def send_audio_to_gpt(self, audio_bytes: bytes, text_prompt: str = None) -> dict:
-        """Send audio to GPT-4o-mini-audio-preview and get response, optionally with a text prompt.
-        This version exclusively uses the new audio API and has no fallback mechanism."""
-        try:
-            # Directly call the new audio API.
-            # _send_audio_new_api handles both audio and optional text prompts.
-            return self._send_audio_new_api(audio_bytes, text_prompt=text_prompt)
-        
-        except Exception as e:
-            # Log the specific error that occurred with _send_audio_new_api
-            logger.error(f"Error with new audio API: {e}")
-            update_led('OFF') # Ensure LEDs are off or indicate error state
-            # Re-raise the error as there is no fallback
-            raise
-
-    def _send_audio_new_api(self, audio_bytes: bytes, text_prompt: str = None) -> dict:
-        """Send audio using the new GPT-4o-audio API, optionally with a text prompt."""
-        # Encode audio to base64
-        encoded_audio = self.encode_audio(audio_bytes)
-        
-        # Prepare message content
-        message_content = []
-        
-        # Add text prompt if provided
-        if text_prompt:
-            message_content.append({
-                "type": "text",
-                "text": text_prompt
-            })
-        
-        # Add audio input if audio_bytes are provided
-        if audio_bytes:
-            message_content.append({
-                "type": "input_audio",
-                "input_audio": {
-                    "data": encoded_audio,
-                    "format": self.audio_format
-                }
-            })
-        
-        if not message_content:
-            raise ValueError("Either audio_bytes or text_prompt must be provided.")
-
-        # Prepare messages with conversation history
-        messages = self.conversation_history + [{
-            "role": "user",
-            "content": message_content
-        }]
-        
-        # Make API call
-        print("🤖 Processing with GPT-4o-audio-preview...")
-        update_led('BREATHE', Color.BLUE, 0.5)  # Processing
-        completion = self.client.chat.completions.create(
-            model=self.model,
-            modalities=["text", "audio"], # Ensure modalities are correctly set
-            audio={"voice": self.voice, "format": self.audio_format},
-            messages=messages
-        )
-        
-        response_message = completion.choices[0].message
-        
-        # Update conversation history
-        user_content_for_history = text_prompt if text_prompt else "Audio input"
-        if audio_bytes and text_prompt:
-            user_content_for_history = f"{text_prompt} (with audio)"
-        elif audio_bytes:
-            user_content_for_history = "Audio input"
-        
-        self.conversation_history.append({"role": "user", "content": user_content_for_history})
-        
-        assistant_response_for_history = "Assistant response" # Default
-        if hasattr(response_message, 'audio') and response_message.audio and \
-           hasattr(response_message.audio, 'transcript') and response_message.audio.transcript:
-            assistant_response_for_history = response_message.audio.transcript
-        elif hasattr(response_message, 'content') and response_message.content:
-            # If content is a list (e.g. from multimodal output), extract text parts
-            if isinstance(response_message.content, list):
-                text_parts = [part.text for part in response_message.content if hasattr(part, 'type') and part.type == 'text' and hasattr(part, 'text')]
-                if text_parts:
-                    assistant_response_for_history = " ".join(text_parts)
-                elif assistant_response_for_history == "Assistant response": # if no text parts, keep it generic or indicate audio
-                     assistant_response_for_history = "Audio response (transcription not available)"
-
-            elif isinstance(response_message.content, str): # if content is just a string
-                assistant_response_for_history = response_message.content
-        
-        self.conversation_history.append({"role": "assistant", "content": assistant_response_for_history})
-
-        print("✅ Response received from GPT-4o")
-        update_led('ON', Color.GREEN, 0.2) # Indicate ready
-        return response_message
-
     def process_interaction(self, audio_bytes: bytes = None):
         """Handles a single interaction: send audio to GPT and play response."""
         try:
@@ -294,7 +171,7 @@ class SimpleVoiceBotRPi:
                 print("No audio data provided.")
                 return
 
-            # Send to GPT
+            # Send to GPT using inherited method
             response_message = self.send_audio_to_gpt(audio_bytes)
 
             response_text = None
