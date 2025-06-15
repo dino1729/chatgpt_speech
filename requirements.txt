@@ -6,6 +6,7 @@ sounddevice
 soundfile
 tiktoken
 python-dotenv
+openai>=1.40.0
 newspaper3k
 llama-hub==0.0.79.post1
 llama-index-llms-azure-openai

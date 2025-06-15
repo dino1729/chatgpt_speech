@@ -99,6 +99,8 @@ class SimpleVoiceBotRPi:
             
             if openai_api_key and openai_base_url:
                 print(f"Using custom OpenAI API endpoint: {openai_base_url}")
+                print("⚠️  Note: Custom endpoints may not support GPT-4o audio features.")
+                print("   The bot will automatically fall back to transcription + TTS if needed.")
                 self.client = OpenAI(
                     api_key=openai_api_key,
                     base_url=openai_base_url
@@ -195,61 +197,159 @@ class SimpleVoiceBotRPi:
     def send_audio_to_gpt(self, audio_bytes: bytes) -> dict:
         """Send audio to GPT-4o-audio-preview and get response."""
         try:
-            # Encode audio to base64
-            encoded_audio = self.encode_audio(audio_bytes)
-            
-            # Prepare message content - only audio input
-            message_content = [{
-                "type": "input_audio",
-                "input_audio": {
-                    "data": encoded_audio,
-                    "format": self.audio_format
-                }
-            }]
-            
-            # Prepare messages with conversation history
-            messages = self.conversation_history + [{
-                "role": "user",
-                "content": message_content
-            }]
-            
-            # Make API call
-            print("🤖 Processing with GPT-4o-audio-preview...")
-            update_led('BREATHE', Color.BLUE, 0.5)  # Processing
-            completion = self.client.chat.completions.create(
-                model=self.model,
-                modalities=["text", "audio"],
-                audio={"voice": self.voice, "format": self.audio_format},
-                messages=messages
-            )
-            
-            response_message = completion.choices[0].message
-            
-            # Update conversation history
-            self.conversation_history.append({
-                "role": "user", 
-                "content": "Audio input"
-            })
-            
-            if response_message.audio:
-                self.conversation_history.append({
-                    "role": "assistant",
-                    "content": response_message.audio.transcript or "Audio response"
-                })
-            elif response_message.content:
-                self.conversation_history.append({
-                    "role": "assistant",
-                    "content": response_message.content
-                })
-            
-            print("✅ Response received from GPT-4o")
-            update_led('OFF')
-            return response_message
-            
+            # Check if we can use the new audio API
+            try:
+                # Try the new audio API first
+                return self._send_audio_new_api(audio_bytes)
+            except (TypeError, Exception) as e:
+                error_str = str(e).lower()
+                if any(keyword in error_str for keyword in ["modalities", "input_audio", "unexpected keyword", "audio"]):
+                    print("⚠️  Audio API not supported by this endpoint, falling back to transcription + TTS...")
+                    return self._send_audio_fallback(audio_bytes)
+                else:
+                    raise e
         except Exception as e:
             logger.error(f"Error communicating with GPT: {e}")
             update_led('OFF')
             raise
+
+    def _send_audio_new_api(self, audio_bytes: bytes) -> dict:
+        """Send audio using the new GPT-4o-audio API."""
+        # Encode audio to base64
+        encoded_audio = self.encode_audio(audio_bytes)
+        
+        # Prepare message content - only audio input
+        message_content = [{
+            "type": "input_audio",
+            "input_audio": {
+                "data": encoded_audio,
+                "format": self.audio_format
+            }
+        }]
+        
+        # Prepare messages with conversation history
+        messages = self.conversation_history + [{
+            "role": "user",
+            "content": message_content
+        }]
+        
+        # Make API call
+        print("🤖 Processing with GPT-4o-audio-preview...")
+        update_led('BREATHE', Color.BLUE, 0.5)  # Processing
+        completion = self.client.chat.completions.create(
+            model=self.model,
+            modalities=["text", "audio"],
+            audio={"voice": self.voice, "format": self.audio_format},
+            messages=messages
+        )
+        
+        response_message = completion.choices[0].message
+        
+        # Update conversation history
+        self.conversation_history.append({
+            "role": "user", 
+            "content": "Audio input"
+        })
+        
+        # Handle the response based on the new format
+        if hasattr(response_message, 'audio') and response_message.audio:
+            # Audio response with transcript
+            self.conversation_history.append({
+                "role": "assistant",
+                "content": response_message.audio.transcript or "Audio response"
+            })
+        elif response_message.content:
+            # Text-only response
+            self.conversation_history.append({
+                "role": "assistant",
+                "content": response_message.content
+            })
+        
+        print("✅ Response received from GPT-4o")
+        update_led('OFF')
+        return response_message
+
+    def _send_audio_fallback(self, audio_bytes: bytes) -> dict:
+        """Fallback method using transcription + text chat + TTS."""
+        # Step 1: Transcribe audio to text
+        print("🎤 Transcribing audio...")
+        update_led('BREATHE', Color.YELLOW, 0.5)  # Transcribing
+        
+        # Save audio to temporary file for transcription
+        temp_audio_path = "temp_transcribe.wav"
+        with open(temp_audio_path, 'wb') as f:
+            f.write(audio_bytes)
+        
+        try:
+            # Use OpenAI Whisper for transcription
+            with open(temp_audio_path, 'rb') as audio_file:
+                transcript = self.client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio_file
+                )
+            user_text = transcript.text
+            print(f"👤 User said: {user_text}")
+            
+            # Step 2: Send text to GPT
+            print("🤖 Processing with GPT...")
+            update_led('BREATHE', Color.BLUE, 0.5)  # Processing
+            
+            messages = self.conversation_history + [{
+                "role": "user",
+                "content": user_text
+            }]
+            
+            completion = self.client.chat.completions.create(
+                model="gpt-4o-mini",  # Use standard text model for fallback
+                messages=messages
+            )
+            
+            response_text = completion.choices[0].message.content
+            print(f"🤖 Assistant: {response_text}")
+            
+            # Step 3: Convert response to speech
+            print("🔊 Converting response to speech...")
+            update_led('BREATHE', Color.GREEN, 0.5)  # TTS
+            
+            speech_response = self.client.audio.speech.create(
+                model="tts-1",
+                voice=self.voice,
+                input=response_text,
+                response_format="wav"  # Match the audio format
+            )
+            
+            # Update conversation history
+            self.conversation_history.append({
+                "role": "user",
+                "content": user_text
+            })
+            self.conversation_history.append({
+                "role": "assistant",
+                "content": response_text
+            })
+            
+            # Create a mock response object similar to the new API
+            class MockResponse:
+                def __init__(self, text, audio_data):
+                    self.content = text
+                    self.audio = MockAudio(audio_data, text)
+            
+            class MockAudio:
+                def __init__(self, audio_data, transcript):
+                    self.data = self.encode_audio(audio_data)
+                    self.transcript = transcript
+                
+                def encode_audio(self, audio_bytes):
+                    return base64.b64encode(audio_bytes).decode('utf-8')
+            
+            print("✅ Response generated via fallback method")
+            update_led('OFF')
+            return MockResponse(response_text, speech_response.content)
+            
+        finally:
+            # Clean up temp file
+            if os.path.exists(temp_audio_path):
+                os.remove(temp_audio_path)
 
     def process_interaction(self, audio_bytes: bytes = None):
         """Handles a single interaction: send audio to GPT and play response."""
@@ -265,26 +365,23 @@ class SimpleVoiceBotRPi:
             response_audio_bytes = None
 
             if response_message:
-                # Extract audio if present
+                # Extract audio if present (new format)
                 if hasattr(response_message, 'audio') and response_message.audio and \
                    hasattr(response_message.audio, 'data') and response_message.audio.data:
                     response_audio_bytes = self.decode_audio(response_message.audio.data)
 
-                # Extract text:
-                # 1. From audio transcript (priority if audio response exists)
+                # Extract text from transcript or content
                 if hasattr(response_message, 'audio') and response_message.audio and \
                    hasattr(response_message.audio, 'transcript') and response_message.audio.transcript:
                     response_text = response_message.audio.transcript
-                
-                # 2. From .content if no transcript from .audio or if .content is primary
-                if not response_text and hasattr(response_message, 'content'):
+                elif hasattr(response_message, 'content') and response_message.content:
                     if isinstance(response_message.content, str):
                         response_text = response_message.content
-                    elif isinstance(response_message.content, list): # Handle list of content parts
+                    elif isinstance(response_message.content, list):
+                        # Handle list of content parts
                         temp_texts = []
                         for item in response_message.content:
                             if hasattr(item, 'type') and item.type == 'text' and hasattr(item, 'text'):
-                                # item.text could be an object with .value or a string itself
                                 if hasattr(item.text, 'value') and isinstance(item.text.value, str):
                                     temp_texts.append(item.text.value)
                                 elif isinstance(item.text, str): 
