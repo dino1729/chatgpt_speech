@@ -1,14 +1,9 @@
 import os
 import base64
-import sounddevice as sd
-import soundfile as sf
 import json
 import time
 import logging
 import sys
-import numpy as np
-from openai import OpenAI
-from config import config
 import platform # Added for platform detection
 
 # Attempt to import Raspberry Pi specific libraries
@@ -24,6 +19,12 @@ if IS_RASPBERRY_PI:
         IS_RASPBERRY_PI = False
 else:
     print("Not running on a Raspberry Pi. GPIO/LED functionality will be disabled.")
+    import sounddevice as sd
+    import soundfile as sf
+    import numpy as np
+
+from openai import OpenAI
+from config import config
 
 # Setup logging
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
