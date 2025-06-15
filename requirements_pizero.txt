@@ -1,5 +1,3 @@
 openai
-sounddevice
-soundfile
-numpy
 RPi.GPIO
+# google-assistant-library[samples] # For aiy.leds, or install separately if needed
