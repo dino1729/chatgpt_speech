@@ -221,7 +221,7 @@ def generate_gpt_response_memorypalace(user_message):
     Additionally, for each topic, provide one historical anecdote that can go back up to 10,000 years ago when human civilization started. The lesson can include a key event, discovery, mistake, and teaching from various cultures and civilizations throughout history. This will help Dinesh gain a deeper understanding of the topic by learning from the past since if one does not know history, one thinks short term; if one knows history, one thinks medium and long term..
     
     Here's a bit more about Dinesh:
-    You should be a centrist politically. I reside in Hillsboro, Oregon, and I hold the position of Senior Analog Circuit Design Engineer with eight years of work experience. I am a big believer in developing Power Delivery IPs with clean interfaces and minimal maintenance. I like to work on Raspberry Pi projects and home automation in my free time. Recently, I have taken up the exciting hobby of creating LLM applications. Currently, I am engaged in the development of a fantasy premier league recommender bot that selects the most suitable players based on statistical data for a specific fixture, all while adhering to a budget. Another project that I have set my sights on is a generativeAI-based self-driving system that utilizes text prompts as sensor inputs to generate motor drive outputs, enabling the bot to control itself. The key aspect of this design lies in achieving a latency of 1000 tokens per second for the LLM token generation, which can be accomplished using a local GPU cluster. I am particularly interested in the field of physics, particularly relativity, quantum mechanics, game theory and the simulation hypothesis. I have a genuine curiosity about the interconnectedness of things and the courage to explore and advocate for interventions, even if they may not be immediately popular or obvious. My ultimate goal is to achieve success in all aspects of life and incorporate the “systems thinking” and “critical thinking” mindset into my daily routine. I aim to apply systems thinking to various situations, both professional and personal, to gain insights into different perspectives and better understand complex problems. Currently, I am captivated by the achievements of individuals like Chanakya, Nicholas Tesla, Douglas Englebart, JCR Licklider, and Vannevar Bush, and I aspire to emulate their success. I’m also super interested in learning more about game theory and how people behave in professional settings. I’m curious about the strategies that can be used to influence others and potentially advance quickly in the workplace. I’m curious about the strategies that can be used to influence others and potentially advance quickly in the workplace. So, coach me on how to deliver my presentations, communicate clearly and concisely, and how to conduct myself in front of influential people. My ultimate goal is to lead a large organization where I can create innovative technology that can benefit billions of people and improve their lives.
+    You should be a centrist politically. I reside in Hillsboro, Oregon, and I hold the position of Senior Analog Circuit Design Engineer with eight years of work experience. I am a big believer in developing Power Delivery IPs with clean interfaces and minimal maintenance. I like to work on Raspberry Pi projects and home automation in my free time. Recently, I have taken up the exciting hobby of creating LLM applications. Currently, I am engaged in the development of a fantasy premier league recommender bot that selects the most suitable players based on statistical data for a specific fixture, all while adhering to a budget. Another project that I have set my sights on is a generativeAI-based self-driving system that utilizes text prompts as sensor inputs to generate motor drive outputs, enabling the bot to control itself. The key aspect of this design lies in achieving a latency of 1000 tokens per second for the LLM token generation, which can be accomplished using a local GPU cluster. I am particularly interested in the field of physics, particularly relativity, quantum mechanics, game theory and the simulation hypothesis. I have a genuine curiosity about the interconnectedness of things and the courage to explore and advocate for interventions, even if they may not be immediately popular or obvious. My ultimate goal is to achieve success in all aspects of life and incorporate the "systems thinking" and "critical thinking" mindset into my daily routine. I aim to apply systems thinking to various situations, both professional and personal, to gain insights into different perspectives and better understand complex problems. Currently, I am captivated by the achievements of individuals like Chanakya, Nicholas Tesla, Douglas Englebart, JCR Licklider, and Vannevar Bush, and I aspire to emulate their success. I'm also super interested in learning more about game theory and how people behave in professional settings. I'm curious about the strategies that can be used to influence others and potentially advance quickly in the workplace. I'm curious about the strategies that can be used to influence others and potentially advance quickly in the workplace. So, coach me on how to deliver my presentations, communicate clearly and concisely, and how to conduct myself in front of influential people. My ultimate goal is to lead a large organization where I can create innovative technology that can benefit billions of people and improve their lives.
     """
     system_prompt = [{
         "role": "system",
@@ -271,43 +271,95 @@ def get_random_topic():
 
     return topic
 
+def enhance_query_with_llm(userquery: str) -> str:
+    client = OpenAIAzure(
+        api_key=azure_api_key,
+        azure_endpoint=azure_api_base,
+        api_version=azure_chatapi_version,
+    )
+    system_message = (
+        "You are an expert at rephrasing and expanding user queries to maximize semantic search recall. "
+        "Given a short or ambiguous user query, rewrite it as a detailed, explicit, and verbose description, "
+        "including synonyms, related concepts, and clarifying context, but do not answer the question. "
+        "Output only the improved query, nothing else."
+    )
+    messages = [
+        {"role": "system", "content": system_message},
+        {"role": "user", "content": userquery}
+    ]
+    response = client.chat.completions.create(
+        model=azure_gpt4_deploymentid,
+        messages=messages,
+        max_tokens=128,
+        temperature=0.3
+    )
+    improved_query = response.choices[0].message.content.strip()
+    return improved_query
+
 def get_random_lesson():
     try:
-        # Step 1: Select a random topic
         topic = get_random_topic()
-
-        # Step 2: Generate embeddings for the topic
-        topic_embedding = generate_embeddings(topic)
-        # Debugging
-        # print(f"Topic: {topic}")
-
+        try:
+            improved_topic = enhance_query_with_llm(topic)
+        except Exception as e:
+            print(f"Warning: Could not enhance query, using original topic. Error: {str(e)}")
+            improved_topic = topic
+        
+        try:
+            topic_embedding = generate_embeddings(improved_topic)
+        except Exception as e:
+            print(f"Error generating embeddings: {str(e)}")
+            topic_embedding = generate_embeddings(topic)
+        
         try:
             supabase_client = supabase.Client(public_supabase_url, supabase_service_role_key)
-            # Step 3: Perform a vector search in the Supabase database
-            response = supabase_client.rpc('mp_search', {
-                'query_embedding': topic_embedding,
-                'similarity_threshold': 0.4,  # Adjust this threshold as needed
-                'match_count': 6
-            }).execute()
+            similarity_thresholds = [0.9, 0.8, 0.7, 0.6, 0.5, 0.4]
+            max_matches = 10
+            seen_ids = set()
+            results = []
+            for threshold in similarity_thresholds:
+                if len(results) >= max_matches:
+                    break
+                remaining = max_matches - len(results)
+                response = supabase_client.rpc('mp_search', {
+                    'query_embedding': topic_embedding,
+                    'similarity_threshold': threshold,
+                    'match_count': remaining
+                }).execute()
+                for match in response.data:
+                    match_id = match.get('id') or match.get('pk') or id(match)
+                    if match_id not in seen_ids:
+                        results.append(match)
+                        seen_ids.add(match_id)
+                if len(results) >= max_matches:
+                    break
             
-            # Extract the content from the top matches
-            top_matches = response.data
-            contents = [match['content'] for match in top_matches]
-
-            # Step 4: Generate a response using OpenAI
-            prompt = f"Today's Topic: {topic}\n\nBased on the following lessons, generate a summary or lesson learned for the topic:\n\n" + "\n\n".join(contents)
+            contents = [
+                {
+                    'content': match['content'],
+                    'similarity': match.get('similarity', 'N/A'),
+                    'metadata': {k: v for k, v in match.items() if k not in ['content', 'similarity']}
+                }
+                for match in results
+            ]
+            formatted_chunks = "\n\n".join(
+                f"[Similarity: {c['similarity']}]\n{c['content']}" for c in contents
+            )
+            prompt = (
+                f"Today's Topic: {topic}\n\n"
+                f"Based on the following lessons (each with a similarity index), generate a summary or lesson learned for the topic:\n\n"
+                f"{formatted_chunks}"
+            )
             lesson_learned = generate_gpt_response_memorypalace(prompt)
-        
         except Exception as e:
-            print(f"Error connecting to Supabase: {str(e)}")
-            # Fallback: Generate a response without using Supabase data
-            prompt = f"Today's Topic: {topic}\n\nPlease provide insights, lessons, and historical context about this topic. Include one historical anecdote going back up to 10,000 years of human civilization that relates to this topic."
+            print(f"Error connecting to Supabase or retrieving matches: {str(e)}")
+            prompt = (
+                f"Today's Topic: {topic}\n\nPlease provide insights, lessons, and historical context about this topic. "
+                f"Include one historical anecdote going back up to 10,000 years of human civilization that relates to this topic."
+            )
             lesson_learned = generate_gpt_response_memorypalace(prompt)
-            
         return lesson_learned
-    
     except Exception as e:
-        # Ultimate fallback if everything fails
         print(f"Critical error in get_random_lesson: {str(e)}")
         return "Today I encountered some technical difficulties retrieving your lesson. However, remember that setbacks are temporary, and persistence is key to overcoming challenges. Let's continue our learning journey tomorrow with renewed enthusiasm."
 

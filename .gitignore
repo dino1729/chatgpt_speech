@@ -12,3 +12,4 @@ config.yml
 used_topics.txt
 used_personalities.txt
 *log
+.DS_Store
