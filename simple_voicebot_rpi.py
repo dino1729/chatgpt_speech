@@ -136,10 +136,12 @@ class SimpleVoiceBotRPi:
             self.DOUBLE_PRESS_MAX_DELAY = 0.5
             self.last_press_time = 0
             self.rpi_recording_active = False # To track arecord process
+            self.arecord_process = None  # Track arecord subprocess
             print("GPIO button initialized on pin 23")
         else:
-            print("GPIO not available - will use keyboard input instead")
+            print("GPIO not available - headless mode requires hardware button")
             self.rpi_recording_active = False
+            self.arecord_process = None
         
         # Set up audio device
         if IS_RASPBERRY_PI:
@@ -190,87 +192,116 @@ class SimpleVoiceBotRPi:
             if os.path.exists(temp_output_path):
                 os.remove(temp_output_path)
     
-    def send_audio_to_gpt(self, audio_bytes: bytes, text_prompt: str = None) -> dict:
+    def send_audio_to_gpt(self, audio_bytes: bytes) -> dict:
+        """Send audio to GPT-4o-audio-preview and get response."""
         try:
+            # Encode audio to base64
             encoded_audio = self.encode_audio(audio_bytes)
-            message_content = []
-            if text_prompt:
-                message_content.append({"type": "text", "text": text_prompt})
             
-            message_content.append({
-                "type": "image_url", # This seems incorrect for audio, should be audio related
-                                     # However, current OpenAI API for gpt-4o with audio input
-                                     # might still use a similar structure or a specific SDK call.
-                                     # For direct audio chat, the API might differ.
-                                     # This part needs to align with the exact API spec for audio input.
-                                     # Assuming a placeholder or a simplified approach for now.
-                                     # The correct method is client.audio.transcriptions.create for speech-to-text
-                                     # and client.audio.speech.create for text-to-speech.
-                                     # This function seems to intend to send audio *for chat completion directly*.
-                "image_url": { # Placeholder - this is for images, not audio.
-                    "url": f"data:audio/{self.audio_format};base64,{encoded_audio}"
+            # Prepare message content - only audio input
+            message_content = [{
+                "type": "input_audio",
+                "input_audio": {
+                    "data": encoded_audio,
+                    "format": self.audio_format
                 }
+            }]
+            
+            # Prepare messages with conversation history
+            messages = self.conversation_history + [{
+                "role": "user",
+                "content": message_content
+            }]
+            
+            # Make API call
+            print("🤖 Processing with GPT-4o-audio-preview...")
+            update_led('BREATHE', Color.BLUE, 0.5)  # Processing
+            completion = self.client.chat.completions.create(
+                model=self.model,
+                modalities=["text", "audio"],
+                audio={"voice": self.voice, "format": self.audio_format},
+                messages=messages
+            )
+            
+            response_message = completion.choices[0].message
+            
+            # Update conversation history
+            self.conversation_history.append({
+                "role": "user", 
+                "content": "Audio input"
             })
-
-            # Let's correct the GPT interaction for audio
-            # 1. Transcribe audio to text
-            # 2. Send text to chat completion
-            # 3. Get text response
-            # 4. Convert text response to speech
             
-            # For simplicity in this direct modification, we'll assume the user wants to send audio
-            # and get a text response, then convert that text response to audio.
-            # The original script's send_audio_to_gpt was structured for multimodal input,
-            # which might not be the primary goal here or might be misusing the API structure.
-
-            # Corrected approach:
-            # 1. Transcribe audio to text
-            temp_audio_for_transcription = "transcribe_temp.wav"
-            with open(temp_audio_for_transcription, 'wb') as f:
-                f.write(audio_bytes)
-
-            with open(temp_audio_for_transcription, 'rb') as audio_file_obj:
-                transcription_response = self.client.audio.transcriptions.create(
-                    model="whisper-1", # Or other transcription model
-                    file=audio_file_obj
-                )
-            os.remove(temp_audio_for_transcription)
-            user_text = transcription_response.text
-            print(f"🎤 You said: {user_text}")
-
-            # Add to conversation history
-            self.conversation_history.append({"role": "user", "content": user_text})
-            if text_prompt: # If there was an initial system-like prompt for the audio
-                 self.conversation_history.insert(-1, {"role": "system", "content": text_prompt})
-
-
-            # 2. Send text to chat model
-            update_led('BREATHE', Color.BLUE) # Thinking
-            chat_response = self.client.chat.completions.create(
-                model=self.model.replace("-audio-preview", ""), # Use text model
-                messages=self.conversation_history
-            )
-            assistant_response_text = chat_response.choices[0].message.content
-            self.conversation_history.append({"role": "assistant", "content": assistant_response_text})
-            print(f"🤖 Assistant: {assistant_response_text}")
-            update_led('OFF')
-
-            # 3. Convert text response to speech
-            update_led('ON', Color.YELLOW) # Speaking
-            speech_response = self.client.audio.speech.create(
-                model="tts-1", # Or other TTS model
-                voice=self.voice,
-                input=assistant_response_text
-            )
-            assistant_audio_bytes = speech_response.read()
-            update_led('OFF')
+            if response_message.audio:
+                self.conversation_history.append({
+                    "role": "assistant",
+                    "content": response_message.audio.transcript or "Audio response"
+                })
+            elif response_message.content:
+                self.conversation_history.append({
+                    "role": "assistant",
+                    "content": response_message.content
+                })
             
-            return {"text_response": assistant_response_text, "audio_response": assistant_audio_bytes}
+            print("✅ Response received from GPT-4o")
+            update_led('OFF')
+            return response_message
+            
+        except Exception as e:
+            logger.error(f"Error communicating with GPT: {e}")
+            update_led('OFF')
+            raise
+
+    def process_interaction(self, audio_bytes: bytes = None):
+        """Handles a single interaction: send audio to GPT and play response."""
+        try:
+            if not audio_bytes:
+                print("No audio data provided.")
+                return
+
+            # Send to GPT
+            response_message = self.send_audio_to_gpt(audio_bytes)
+
+            response_text = None
+            response_audio_bytes = None
+
+            if response_message:
+                # Extract audio if present
+                if hasattr(response_message, 'audio') and response_message.audio and \
+                   hasattr(response_message.audio, 'data') and response_message.audio.data:
+                    response_audio_bytes = self.decode_audio(response_message.audio.data)
+
+                # Extract text:
+                # 1. From audio transcript (priority if audio response exists)
+                if hasattr(response_message, 'audio') and response_message.audio and \
+                   hasattr(response_message.audio, 'transcript') and response_message.audio.transcript:
+                    response_text = response_message.audio.transcript
+                
+                # 2. From .content if no transcript from .audio or if .content is primary
+                if not response_text and hasattr(response_message, 'content'):
+                    if isinstance(response_message.content, str):
+                        response_text = response_message.content
+                    elif isinstance(response_message.content, list): # Handle list of content parts
+                        temp_texts = []
+                        for item in response_message.content:
+                            if hasattr(item, 'type') and item.type == 'text' and hasattr(item, 'text'):
+                                # item.text could be an object with .value or a string itself
+                                if hasattr(item.text, 'value') and isinstance(item.text.value, str):
+                                    temp_texts.append(item.text.value)
+                                elif isinstance(item.text, str): 
+                                    temp_texts.append(item.text)
+                        if temp_texts:
+                            response_text = " ".join(temp_texts)
+            
+            if response_text:
+                print(f"🤖 Assistant: {response_text}")
+            
+            if response_audio_bytes:
+                self.play_audio(response_audio_bytes)
+            elif not response_audio_bytes:
+                print("🤷 No audio response from assistant.")
 
         except Exception as e:
-            logger.error(f"Error in GPT interaction: {e}")
-            update_led('OFF')
-            return {"text_response": "Sorry, I encountered an error.", "audio_response": None}
+            logger.error(f"Error during interaction: {e}", exc_info=True)
 
     def get_audio_device(self):
         """Get the best available audio recording device."""
@@ -416,7 +447,7 @@ def check_requirements():
     return True
 
 def main():
-    global leds # Allow main to initialize leds
+    global leds
     
     print("=== RPi Voice Bot Startup ===")
     
@@ -431,13 +462,113 @@ def main():
     # Initialize LEDs if available
     if IS_RASPBERRY_PI and LEDS_AVAILABLE:
         try:
-            leds = RgbLeds(18) # GPIO 18 for RGB LED
-            print("LEDS initialized")
+            leds = Leds()
+            print("LEDs initialized")
         except Exception as e:
-            print(f"Failed to initialize LEDS: {e}")
-            LEDS_AVAILABLE = False
+            print(f"Failed to initialize LEDs: {e}")
+            leds = None
     
-    # Main loop
-    while True:
-        # Record audio
-        audio_bytes = b""
+    # Initialize the bot
+    bot = SimpleVoiceBotRPi()
+    
+    if IS_RASPBERRY_PI and GPIO_AVAILABLE:
+        update_led('ON', Color.CYAN, 0.1)  # Idle
+        
+        print("Raspberry Pi VoiceBot activated. Press button twice to start/stop recording.")
+        
+        try:
+            while True:
+                try:
+                    # Non-blocking edge detection with timeout
+                    edge_detected = GPIO.wait_for_edge(bot.BUTTON_PIN, GPIO.RISING, timeout=100)
+                    
+                    if edge_detected is not None:  # Button press detected
+                        current_time = time.time()
+                        time_diff = current_time - bot.last_press_time
+                        
+                        if time_diff < bot.DOUBLE_PRESS_MAX_DELAY:  # Double press
+                            bot.last_press_time = 0  # Reset for next double press detection
+                            bot.rpi_recording_active = not bot.rpi_recording_active
+
+                            if bot.rpi_recording_active:
+                                print("🎤 Recording started...")
+                                update_led('ON', Color.RED, 0.75)  # Recording
+                                
+                                # Start arecord process
+                                arecord_command = [
+                                    'arecord',
+                                    '-D', bot.audio_device,
+                                    '-f', 'S16_LE',
+                                    '-r', '44100',  # Match sample rate
+                                    '-c', '1',
+                                    bot.rpi_audio_file
+                                ]
+                                
+                                bot.arecord_process = subprocess.Popen(
+                                    arecord_command, 
+                                    stdout=subprocess.PIPE, 
+                                    stderr=subprocess.PIPE
+                                )
+                                
+                            else:  # Recording stopped
+                                print("🎤 Recording stopped. Processing audio...")
+                                update_led('BREATHE', Color.GREEN, 0.5)  # Processing
+                                
+                                if hasattr(bot, 'arecord_process') and bot.arecord_process:
+                                    bot.arecord_process.terminate()
+                                    bot.arecord_process.wait()
+                                    bot.arecord_process = None
+                                
+                                # Process the recorded audio
+                                audio_bytes = bot.record_audio_from_file()
+                                
+                                if audio_bytes:
+                                    bot.process_interaction(audio_bytes=audio_bytes)
+                                else:
+                                    print("No audio data recorded.")
+                                
+                                # Clean up the temp audio file
+                                try:
+                                    if os.path.exists(bot.rpi_audio_file):
+                                        os.remove(bot.rpi_audio_file)
+                                except OSError as e:
+                                    logger.error(f"Error removing audio file {bot.rpi_audio_file}: {e}")
+                                
+                                update_led('ON', Color.CYAN, 0.1)  # Back to idle
+                                print("Press button twice to start/stop recording.")
+                                
+                        else:  # Single press (or first press of a potential double press)
+                            bot.last_press_time = current_time
+                    
+                    time.sleep(0.01)  # Small sleep to yield CPU
+
+                except RuntimeError as e:  # Catch GPIO specific errors
+                    if "edge detection" in str(e).lower():
+                        logger.warning(f"GPIO Error (likely already cleaned up): {e}")
+                        time.sleep(1)
+                    else:
+                        logger.error(f"Runtime Error: {e}")
+                        time.sleep(1)
+                    continue
+        
+        except KeyboardInterrupt:
+            print("\nScript terminated by user.")
+        finally:
+            # Clean up
+            if hasattr(bot, 'arecord_process') and bot.arecord_process:
+                bot.arecord_process.terminate()
+                bot.arecord_process.wait()
+            if GPIO_AVAILABLE:
+                GPIO.cleanup()
+            update_led('OFF')
+            print("GPIO cleanup done, LEDs off.")
+
+    else:  # Not on Raspberry Pi or GPIO not available
+        print("❌ GPIO not available. This script is designed for Raspberry Pi hardware with button input.")
+        print("Exiting... This is a headless voicebot that requires hardware button interaction.")
+        update_led('OFF')
+        return
+
+
+if __name__ == "__main__":
+    main()
