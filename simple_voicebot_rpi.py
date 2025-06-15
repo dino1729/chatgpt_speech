@@ -1,3 +1,17 @@
+# Load environment variables from .env file (ensure this is at the very top)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    print("python-dotenv is not installed. Please run: pip install python-dotenv")
+    exit(1)
+
+try:
+    from openai import OpenAI
+except ImportError:
+    print("openai is not installed. Please run: pip install openai")
+    exit(1)
+
 import os
 import base64
 import json
@@ -5,22 +19,7 @@ import time
 import logging
 import sys
 import subprocess 
-from openai import OpenAI
 import platform
-
-# Try to import config, but don't fail if it's not available
-try:
-    from config import config
-    CONFIG_AVAILABLE = True
-except ImportError:
-    print("Warning: config module not found. Make sure you have proper API configuration.")
-    CONFIG_AVAILABLE = False
-    # Create a dummy config object
-    class DummyConfig:
-        def __init__(self):
-            self.azure_api_key = os.getenv('OPENAI_API_KEY', 'dummy-key')
-            self.azure_api_base = os.getenv('OPENAI_BASE_URL', 'https://api.openai.com/v1')
-    config = DummyConfig()
 
 # Raspberry Pi specific libraries
 try:
@@ -107,12 +106,6 @@ class SimpleVoiceBotRPi:
             elif openai_api_key:
                 print("Using direct OpenAI API")
                 self.client = OpenAI(api_key=openai_api_key)
-            elif CONFIG_AVAILABLE:
-                print("Using Azure/Proxy API configuration from config.py")
-                self.client = OpenAI(
-                    api_key=config.azure_api_key,
-                    base_url=config.azure_api_base
-                )
             else:
                 raise ValueError(
                     "No OpenAI API configuration found. Please set OPENAI_API_KEY environment variable "
@@ -395,14 +388,6 @@ def check_requirements():
     except ImportError:
         missing_requirements.append("openai")
     
-    try:
-        if CONFIG_AVAILABLE:
-            print("✓ config module available")
-        else:
-            print("⚠️ config module not available - using environment variables")
-    except ImportError:
-        missing_requirements.append("config module (config.py)")
-    
     # Check system commands
     try:
         subprocess.run(['arecord', '--version'], capture_output=True, check=True)
@@ -425,8 +410,6 @@ def check_requirements():
             print("  pip install openai")
         if "alsa-utils" in [req for req in missing_requirements if "alsa-utils" in req]:
             print("  sudo apt update && sudo apt install alsa-utils")
-        if "config module" in missing_requirements:
-            print("  Ensure config.py exists with proper configuration")
         return False
     
     print("✓ All requirements satisfied")
@@ -445,241 +428,16 @@ def main():
             print("Exiting...")
             return
     
-    print("\nInitializing RPi Voice Bot...")
-    
     # Initialize LEDs if available
     if IS_RASPBERRY_PI and LEDS_AVAILABLE:
         try:
-            leds = RgbLeds() # Initialize LEDs
-            update_led('ON', Color.GREEN, 0.3) # Initial ready state
-            print("LEDs initialized.")
+            leds = RgbLeds(18) # GPIO 18 for RGB LED
+            print("LEDS initialized")
         except Exception as e:
-            print(f"Failed to initialize LEDs: {e}")
-            # Continue without LED support if initialization fails
-
-    # Check audio setup
-    if not check_audio_setup():
-        print("\n⚠️  Audio setup check failed. The bot may not work properly.")
-        print("Common solutions:")
-        print("1. Install audio tools: sudo apt update && sudo apt install alsa-utils")
-        print("2. Check connected microphones: arecord -l")
-        print("3. Try different audio device in the arecord_command")
-        response = input("Continue anyway? (y/n): ").strip().lower()
-        if response != 'y':
-            print("Exiting...")
-            return
-
-    try:
-        bot = SimpleVoiceBotRPi()
-    except Exception as e:
-        print(f"Failed to initialize bot: {e}")
-        print("Please check your OpenAI API configuration.")
-        return
+            print(f"Failed to initialize LEDS: {e}")
+            LEDS_AVAILABLE = False
     
-    if IS_RASPBERRY_PI and GPIO_AVAILABLE:
-        print("\n=== GPIO Mode ===")
-        print("RPi Voice Bot is ready. Press the button to start recording.")
-        print("A single press starts/stops recording. A double press exits.")
-        run_with_gpio_button(bot)
-    else:
-        print("\n=== Keyboard Mode ===")
-        print("RPi Voice Bot is ready. GPIO not available - using keyboard input.")
-        print("Press ENTER to start/stop recording, 'q' + ENTER to quit.")
-        run_with_keyboard_input(bot)
-
-def run_with_keyboard_input(bot):
-    """Run the bot with keyboard input instead of GPIO button."""
-    try:
-        while True:
-            user_input = input("\nPress ENTER to record (or 'q' to quit): ").strip().lower()
-            
-            if user_input == 'q':
-                print("Exiting...")
-                break
-            
-            # Start recording
-            print("Starting recording... Press ENTER again to stop.")
-            update_led('ON', Color.RED) # Recording indicator
-            
-            arecord_command = [
-                'arecord', 
-                '-D', bot.audio_device, # Use detected audio device
-                '-f', 'S16_LE',    
-                '-r', '16000',     
-                '-c', '1',         
-                '--duration=30',   # Max 30 seconds
-                bot.rpi_audio_file
-            ]
-            
-            try:
-                recording_process = subprocess.Popen(arecord_command)
-                print(f"Recording started (PID: {recording_process.pid}). Press ENTER to stop...")
-                
-                # Wait for user to press enter again
-                input()
-                
-                # Stop recording
-                print("Stopping recording...")
-                update_led('OFF')
-                recording_process.terminate()
-                try:
-                    recording_process.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    recording_process.kill()
-                
-                # Process the recorded audio
-                audio_data = bot.record_audio_from_file()
-                if audio_data:
-                    update_led('BREATHE', Color.CYAN, 0.7) # Processing
-                    initial_prompt = "You are a helpful assistant on a Raspberry Pi."
-                    response = bot.send_audio_to_gpt(audio_data, text_prompt=initial_prompt)
-                    update_led('OFF')
-                    
-                    if response and response.get("audio_response"):
-                        print(f"Assistant: {response.get('text_response', 'No text response')}")
-                        update_led('ON', Color.MAGENTA, 0.7) # Speaking
-                        bot.play_audio(response["audio_response"])
-                        update_led('ON', Color.GREEN, 0.3) # Ready again
-                    else:
-                        print("No audio response received.")
-                        update_led('ON', Color.RED, 0.5)
-                        time.sleep(2)
-                        update_led('ON', Color.GREEN, 0.3)
-                else:
-                    print("No audio data captured.")
-                    
-            except FileNotFoundError:
-                print("arecord command not found. Please install alsa-utils: sudo apt install alsa-utils")
-            except Exception as e:
-                print(f"Recording error: {e}")
-                
-    except KeyboardInterrupt:
-        print("\nExiting...")
-    finally:
-        if os.path.exists(bot.rpi_audio_file):
-            os.remove(bot.rpi_audio_file)
-        update_led('OFF')
-        print("Cleanup complete. Goodbye!")
-
-def run_with_gpio_button(bot):
-    """Run the bot with GPIO button input."""
-    last_button_state = GPIO.LOW
-    recording_process = None
-
-    try:
-        while True:
-            button_state = GPIO.input(bot.BUTTON_PIN)
-            current_time = time.time()
-
-            if button_state == GPIO.HIGH and last_button_state == GPIO.LOW: # Button pressed
-                time.sleep(0.05) # Debounce
-
-                if bot.rpi_recording_active: # If recording, stop it
-                    print("Button pressed. Stopping recording...")
-                    update_led('OFF')
-                    if recording_process:
-                        recording_process.terminate() # Send SIGTERM to arecord
-                        try:
-                            recording_process.wait(timeout=5) # Wait for it to finish
-                        except subprocess.TimeoutExpired:
-                            recording_process.kill() # Force kill if it doesn't stop
-                        print("arecord process stopped.")
-                    bot.rpi_recording_active = False
-                    
-                    # Process the recorded audio
-                    audio_data = bot.record_audio_from_file()
-                    if audio_data:
-                        update_led('BREATHE', Color.CYAN, 0.7) # Processing
-                        # For RPi, the initial prompt is fixed or could be configured elsewhere
-                        initial_prompt = "You are a helpful assistant on a Raspberry Pi."
-                        response = bot.send_audio_to_gpt(audio_data, text_prompt=initial_prompt)
-                        update_led('OFF')
-                        
-                        if response and response.get("audio_response"):
-                            update_led('ON', Color.MAGENTA, 0.7) # Speaking
-                            bot.play_audio(response["audio_response"])
-                            update_led('ON', Color.GREEN, 0.3) # Ready again
-                        else:
-                            print("No audio response to play.")
-                            update_led('ON', Color.RED, 0.5) # Error indication
-                            time.sleep(2)
-                            update_led('ON', Color.GREEN, 0.3) # Ready again
-                    else:
-                        print("No audio data captured to process.")
-                        update_led('ON', Color.RED, 0.5) 
-                        time.sleep(1)
-                        update_led('ON', Color.GREEN, 0.3)
-
-                else: # If not recording, start it
-                    print("Button pressed. Starting recording...")
-                    update_led('ON', Color.RED) # Recording indicator
-                    # Use '-D hw:CARD=seeed2micvoicec,DEV=0' or your specific card if default doesn't work
-                    # Find your card with 'arecord -l'
-                    # Using a common format, adjust if needed: -f S16_LE -r 16000
-                    arecord_command = [
-                        'arecord', 
-                        '-D', bot.audio_device, # Use detected audio device
-                        '-f', 'S16_LE',    # Sample format (16-bit little-endian)
-                        '-r', '16000',     # Sample rate (16kHz)
-                        '-c', '1',         # Channels (mono)
-                        '--duration=10', # Max duration, but button press will stop it sooner
-                        bot.rpi_audio_file
-                    ]
-                    try:
-                        # Start arecord in the background
-                        recording_process = subprocess.Popen(arecord_command)
-                        bot.rpi_recording_active = True
-                        print(f"arecord started with PID: {recording_process.pid}. Recording to {bot.rpi_audio_file}")
-                        print("Press button again to stop.")
-                    except FileNotFoundError:
-                        logger.error("arecord command not found. Please ensure it's installed and in PATH.")
-                        update_led('BLINK', Color.RED) # Error
-                        time.sleep(3)
-                        update_led('ON', Color.GREEN, 0.3) # Ready
-                    except Exception as e:
-                        logger.error(f"Failed to start arecord: {e}")
-                        update_led('BLINK', Color.RED)
-                        time.sleep(3)
-                        update_led('ON', Color.GREEN, 0.3)
-
-
-                # Double press detection for exit
-                if current_time - bot.last_press_time < bot.DOUBLE_PRESS_MAX_DELAY:
-                    print("Double press detected. Exiting.")
-                    update_led('BLINK', Color.YELLOW, 0.5)
-                    time.sleep(1)
-                    update_led('OFF')
-                    if bot.rpi_recording_active and recording_process:
-                        recording_process.terminate()
-                        try:
-                            recording_process.wait(timeout=2)
-                        except subprocess.TimeoutExpired:
-                            recording_process.kill()
-                    break 
-                bot.last_press_time = current_time
-
-            last_button_state = button_state
-            time.sleep(0.01) # Small delay to prevent busy-waiting
-
-    except KeyboardInterrupt:
-        print("\nExiting...")
-    finally:
-        if bot.rpi_recording_active and recording_process: # Ensure arecord is stopped
-            print("Cleaning up arecord process...")
-            recording_process.terminate()
-            try:
-                recording_process.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                recording_process.kill()
-        if os.path.exists(bot.rpi_audio_file): # Clean up audio file
-             os.remove(bot.rpi_audio_file)
-        update_led('OFF') # Turn off LED
-        GPIO.cleanup() # Clean up GPIO resources
-        print("Cleanup complete. Goodbye!")
-
-if __name__ == "__main__":
-    if not check_requirements():
-        print("Cannot start - missing requirements.")
-        sys.exit(1)
-    
-    main()
+    # Main loop
+    while True:
+        # Record audio
+        audio_bytes = b""
