@@ -187,7 +187,7 @@ class SimpleVoiceBot:
                 os.remove(temp_output_path)
     
     def send_audio_to_gpt(self, audio_bytes: bytes, text_prompt: str = None) -> dict:
-        """Send audio to GPT-4o-audio-preview and get response."""
+        """Send audio to GPT-4o-mini-audio-preview and get response."""
         try:
             # Encode audio to base64
             encoded_audio = self.encode_audio(audio_bytes)
