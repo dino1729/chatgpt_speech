@@ -1,3 +1,4 @@
 openai
 RPi.GPIO
-# google-assistant-library[samples] # For aiy.leds, or install separately if needed
+PyYAML
+python-dotenv
