@@ -364,10 +364,8 @@ def main():
     # Check requirements first
     if not check_requirements():
         print("\n⚠️  Some requirements are missing. The bot may not work properly.")
-        response = input("Continue anyway? (y/n): ").strip().lower()
-        if response != 'y':
-            print("Exiting...")
-            return
+        print("Exiting...")
+        return
     
     # Initialize LEDs if available
     if IS_RASPBERRY_PI and LEDS_AVAILABLE:
