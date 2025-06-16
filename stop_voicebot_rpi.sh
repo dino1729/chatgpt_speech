@@ -17,3 +17,11 @@ if [ -n "$PID" ]; then
 else
   echo "VoiceBot ($PROCESS_NAME) is not running."
 fi
+
+# Attempt to turn off LEDs
+echo "Attempting to turn off LEDs..."
+if python3 test_scripts/turn_off_leds.py; then
+  echo "LED turn off script executed."
+else
+  echo "Failed to execute LED turn off script or script reported an error."
+fi
