@@ -464,14 +464,55 @@ def main():
         except KeyboardInterrupt:
             print("\nScript terminated by user.")
         finally:
-            # Clean up
-            if hasattr(bot, 'arecord_process') and bot.arecord_process:
+            print("Executing cleanup actions...")
+            # Clean up arecord process
+            if hasattr(bot, 'arecord_process') and bot.arecord_process and bot.arecord_process.poll() is None:
+                print("Terminating active arecord process...")
                 bot.arecord_process.terminate()
-                bot.arecord_process.wait()
+                try:
+                    print("Waiting for arecord process to terminate (timeout 0.5s)...")
+                    bot.arecord_process.wait(timeout=0.5) 
+                    print("arecord process terminated.")
+                except subprocess.TimeoutExpired:
+                    print("arecord process timed out, attempting to kill.")
+                    if bot.arecord_process.poll() is None: # Check if still running before kill
+                        bot.arecord_process.kill()
+                        try:
+                            bot.arecord_process.wait(timeout=0.5) # Wait briefly for kill
+                            print("arecord process killed.")
+                        except: # Ignore errors on wait after kill
+                            print("arecord process killed (wait failed or already dead).")
+                except KeyboardInterrupt:
+                    print("KeyboardInterrupt during arecord_process.wait() in finally. Attempting to kill.")
+                    if bot.arecord_process.poll() is None: # Check if still running before kill
+                        bot.arecord_process.kill()
+                    # Continue to other cleanup steps
+                except Exception as e:
+                    print(f"Error during arecord_process cleanup in finally: {e}")
+            
+            # GPIO cleanup
             if GPIO_AVAILABLE:
-                GPIO.cleanup()
-            update_led('OFF')
-            print("GPIO cleanup done, LEDs off.")
+                try:
+                    print("Cleaning up GPIO...")
+                    GPIO.cleanup()
+                    print("GPIO cleanup successful.")
+                except Exception as e:
+                    print(f"Warning: Error during GPIO.cleanup(): {e}. This might be okay if already cleaned or not setup.")
+            
+            # LED cleanup
+            if LEDS_AVAILABLE and leds is not None: # Ensure leds object was initialized
+                try:
+                    print("Turning LEDs off...")
+                    update_led('OFF')
+                    print("LEDs should be off.")
+                except Exception as e:
+                    print(f"Error turning off LEDs: {e}")
+            elif not LEDS_AVAILABLE:
+                print("LEDs not available, skipping LED off command.")
+            elif leds is None:
+                print("LEDs object not initialized, skipping LED off command.")
+            
+            print("Cleanup process completed.")
 
     else:  # Not on Raspberry Pi or GPIO not available
         print("❌ GPIO not available. This script is designed for Raspberry Pi hardware with button input.")
