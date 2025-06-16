@@ -25,6 +25,7 @@ else:
 
 from openai import OpenAI
 from config import config
+from config import system_prompt  # Import system_prompt
 
 # Setup logging
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -94,8 +95,8 @@ class SimpleVoiceBot:
         self.model = "gpt-4o-mini-audio-preview"  # Use the correct available audio model
         self.voice = "alloy"  # Options: alloy, echo, fable, onyx, nova, shimmer
         
-        # Conversation history
-        self.conversation_history = []
+        # Conversation history with system prompt
+        self.conversation_history = list(system_prompt)  # Start with system prompt
 
         if IS_RASPBERRY_PI:
             # GPIO setup
