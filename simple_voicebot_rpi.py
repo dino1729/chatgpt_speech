@@ -111,7 +111,7 @@ class SimpleVoiceBotRPi(SimpleVoiceBot):
             self.BUTTON_PIN = 23
             GPIO.setmode(GPIO.BCM)
             GPIO.setup(self.BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-            self.DOUBLE_PRESS_MAX_DELAY = 0.5
+            self.DEBOUNCE_DELAY = 0.3  # Debounce delay in seconds
             self.last_press_time = 0
             self.rpi_recording_active = False # To track arecord process
             self.arecord_process = None  # Track arecord subprocess
@@ -384,7 +384,7 @@ def main():
     if IS_RASPBERRY_PI and GPIO_AVAILABLE:
         update_led('ON', Color.CYAN, 0.1)  # Idle
         
-        print("Raspberry Pi VoiceBot activated. Press button twice to start/stop recording.")
+        print("Raspberry Pi VoiceBot activated. Press button to start/stop recording.")
         
         try:
             while True:
@@ -394,10 +394,11 @@ def main():
                     
                     if edge_detected is not None:  # Button press detected
                         current_time = time.time()
-                        time_diff = current_time - bot.last_press_time
                         
-                        if time_diff < bot.DOUBLE_PRESS_MAX_DELAY:  # Double press
-                            bot.last_press_time = 0  # Reset for next double press detection
+                        # Debounce logic
+                        if (current_time - bot.last_press_time) > bot.DEBOUNCE_DELAY:
+                            bot.last_press_time = current_time  # Update last_press_time for debounce
+
                             bot.rpi_recording_active = not bot.rpi_recording_active
 
                             if bot.rpi_recording_active:
@@ -445,10 +446,9 @@ def main():
                                     logger.error(f"Error removing audio file {bot.rpi_audio_file}: {e}")
                                 
                                 update_led('ON', Color.CYAN, 0.1)  # Back to idle
-                                print("Press button twice to start/stop recording.")
+                                print("Press button to start/stop recording.")
                                 
-                        else:  # Single press (or first press of a potential double press)
-                            bot.last_press_time = current_time
+                # Removed the old 'else' block for single press of a double press
                     
                     time.sleep(0.01)  # Small sleep to yield CPU
 
