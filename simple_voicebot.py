@@ -220,7 +220,7 @@ class SimpleVoiceBot:
             }]
             
             # Make API call
-            print("🤖 Processing with GPT-4o-audio-preview...")
+            print("🤖 Processing with GPT-4o-mini-audio-preview...")
             completion = self.client.chat.completions.create(
                 model=self.model,
                 modalities=["text", "audio"],
@@ -247,7 +247,7 @@ class SimpleVoiceBot:
                     "content": response_message.content
                 })
             
-            print("✅ Response received from GPT-4o")
+            print("✅ Response received from GPT-4o-mini-audio-preview")
             return response_message
             
         except Exception as e:
