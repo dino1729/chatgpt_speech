@@ -422,7 +422,7 @@ def main():
                                 
                             else:  # Recording stopped
                                 print("🎤 Recording stopped. Processing audio...")
-                                update_led('ON', Color.GREEN, 0.5)  # Processing
+                                update_led('BREATHE', Color.GREEN, 0.5)  # Processing
                                 
                                 if hasattr(bot, 'arecord_process') and bot.arecord_process:
                                     bot.arecord_process.terminate()
