@@ -93,10 +93,17 @@ class SimpleVoiceBot:
         
         # Model settings
         self.model = "gpt-4o-mini-audio-preview"  # Use the correct available audio model
-        self.voice = "alloy"  # Options: alloy, echo, fable, onyx, nova, shimmer
+        
+        # Voice cycling setup - voices from the image
+        self.available_voices = ["alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"]
+        self.current_voice_index = 0
+        self.voice = self.available_voices[self.current_voice_index]
+        print(f"🎵 Starting with voice: {self.voice.capitalize()}")
         
         # Conversation history with system prompt
         self.conversation_history = list(system_prompt)  # Start with system prompt
+        self.last_interaction_time = time.time()
+        self.conversation_reset_interval = 3600 # 1 hour in seconds
 
         if IS_RASPBERRY_PI:
             # GPIO setup
@@ -108,6 +115,12 @@ class SimpleVoiceBot:
             self.rpi_recording_active = False
         
         logger.info("SimpleVoiceBot initialized successfully")
+    
+    def cycle_voice(self):
+        """Cycle to the next voice in the available voices list."""
+        self.current_voice_index = (self.current_voice_index + 1) % len(self.available_voices)
+        self.voice = self.available_voices[self.current_voice_index]
+        print(f"🎵 Switched to voice: {self.voice.capitalize()}")
     
     def record_audio(self) -> bytes:
         """Record audio from microphone and return as bytes."""
@@ -257,6 +270,13 @@ class SimpleVoiceBot:
     def process_interaction(self, audio_bytes: bytes = None, text_input: str = None):
         """Handles a single interaction: record, send to GPT, play response."""
         try:
+            # Check if conversation needs to be reset
+            if time.time() - self.last_interaction_time > self.conversation_reset_interval:
+                print("\n-- Resetting conversation due to 1-hour inactivity --\n")
+                self.conversation_history = list(system_prompt)
+            
+            self.last_interaction_time = time.time()
+
             user_provided_audio = bool(audio_bytes)
 
             if text_input:
@@ -329,6 +349,9 @@ class SimpleVoiceBot:
                     logger.error(f"Error during TTS: {e}")
             elif not response_text and not response_audio_bytes:
                 print("🤷 No response content (text or audio) from assistant.")
+
+            # Cycle to the next voice after each interaction
+            self.cycle_voice()
 
         except Exception as e:
             logger.error(f"Error during interaction: {e}", exc_info=True)

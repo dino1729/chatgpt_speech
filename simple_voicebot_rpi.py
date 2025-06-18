@@ -143,6 +143,7 @@ class SimpleVoiceBotRPi(SimpleVoiceBot):
     def play_audio(self, audio_bytes: bytes):
         """Play audio from bytes using aplay (RPi-specific override)."""
         temp_output_path = "temp_response.wav"
+        update_led('BLINK', Color.BLUE, 0.75)  # Bot responding
         
         try:
             with open(temp_output_path, 'wb') as f:
@@ -421,7 +422,7 @@ def main():
                                 
                             else:  # Recording stopped
                                 print("🎤 Recording stopped. Processing audio...")
-                                update_led('BREATHE', Color.GREEN, 0.5)  # Processing
+                                update_led('ON', Color.GREEN, 0.5)  # Processing
                                 
                                 if hasattr(bot, 'arecord_process') and bot.arecord_process:
                                     bot.arecord_process.terminate()
