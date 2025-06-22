@@ -38,7 +38,7 @@ Orion isn't just another voice assistant - it's a **cutting-edge AI companion** 
 
 ### 📱 Watch Orion in Action!
 
-> **📹 Upload your iPhone demo video here by dragging and dropping it into this section when editing on GitHub.com!**
+https://github.com/user-attachments/assets/02a2a1a8-d76b-4aa3-9b25-fffffbeb9d71
 
 *Orion Voice Assistant running on Raspberry Pi Zero 2W - demonstrating natural voice interactions, LED feedback, and GPT-4o-mini responses in real-time!*
 
