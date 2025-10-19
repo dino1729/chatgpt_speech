@@ -42,3 +42,4 @@ pinecone-client
 lxml_html_clean
 gpt_researcher
 numpy
+litellm
