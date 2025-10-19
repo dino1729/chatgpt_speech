@@ -7,6 +7,7 @@ soundfile
 tiktoken
 python-dotenv
 openai>=1.40.0
+nvidia-riva-client>=2.14.0
 newspaper3k
 llama-hub==0.0.79.post1
 llama-index-llms-azure-openai
@@ -40,5 +41,4 @@ pytube
 pinecone-client
 lxml_html_clean
 gpt_researcher
-openai
 numpy
