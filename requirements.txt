@@ -9,7 +9,7 @@ python-dotenv
 openai>=1.40.0
 nvidia-riva-client>=2.14.0
 newspaper3k
-llama-hub==0.0.79.post1
+llama-hub
 llama-index-llms-azure-openai
 llama-index-readers-file
 llama-index-readers-llama-parse
@@ -20,7 +20,7 @@ llama-index-tools-weather
 llama-index-tools-google
 llama-index-tools-wikipedia
 pyowm
-llama-index==0.12.4
+llama-index
 langchain>=0.0.329
 # mediapipe
 pvporcupine
