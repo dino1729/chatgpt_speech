@@ -1,20 +1,22 @@
-from openai import AzureOpenAI as OpenAIAzure
-from config import config
+"""Trip planner using OpenAI-compatible API."""
+from helper_functions.openai_compat import get_openai_client, get_chat_model
 
-azure_api_key = config.azure_api_key
-azure_api_base = config.azure_api_base
-azure_chatapi_version = config.azure_chatapi_version
-azure_chatapi_version = config.azure_chatapi_version
-azure_gpt4omini_deploymentid = config.azure_gpt4omini_deploymentid
 
 def generate_trip_plan(city, days):
-
-    client = OpenAIAzure(
-        api_key=azure_api_key,
-        azure_endpoint=azure_api_base,
-        api_version=azure_chatapi_version,
-    )
-    #Check if the days input is a number and throw an error if it is not
+    """
+    Generate a detailed trip itinerary for a given city.
+    
+    Args:
+        city: Destination city
+        days: Number of days for the trip
+    
+    Returns:
+        str: Detailed trip itinerary or error message
+    """
+    client = get_openai_client()
+    model = get_chat_model("fast")
+    
+    # Check if the days input is a number and throw an error if it is not
     try:
         days = int(days)
 
@@ -27,7 +29,7 @@ def generate_trip_plan(city, days):
         conversation.append({"role": "user", "content": str(user_message)})
         
         response = client.chat.completions.create(
-            model=azure_gpt4omini_deploymentid,
+            model=model,
             messages=conversation,
             max_tokens=2048,
             temperature=0.3,
@@ -35,5 +37,5 @@ def generate_trip_plan(city, days):
         message = response.choices[0].message.content
         conversation.append({"role": "assistant", "content": str(message)})
         return f"Here is your trip plan for {city} for {days} day(s): {message}"
-    except:
+    except Exception:
         return "Please enter a number for days."

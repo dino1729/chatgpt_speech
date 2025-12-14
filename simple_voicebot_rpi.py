@@ -1,11 +1,3 @@
-# Load environment variables from .env file (ensure this is at the very top)
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    print("python-dotenv is not installed. Please run: pip install python-dotenv")
-    exit(1)
-
 try:
     from openai import OpenAI
 except ImportError:

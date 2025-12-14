@@ -16,7 +16,7 @@ logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 temperature = config.temperature
 max_tokens = config.max_tokens
 
-model_names = ["GROQ_MIXTRAL", "GROQ_LLAMA", "GPT4OMINI", "GPT4", "GEMINI", "COHERE"]
+model_names = config.model_names_list
 model_index = random.randint(0, len(model_names) - 1)
 model_name = model_names[model_index]
 

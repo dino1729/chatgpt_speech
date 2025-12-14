@@ -1,39 +1,40 @@
+"""Bhagavad Gita Q&A assistant using OpenAI-compatible API."""
 from helper_functions.chat_generation import generate_chat
-from openai import AzureOpenAI as OpenAIAzure
+from helper_functions.openai_compat import get_openai_client, get_embedding_model
 from config import config
 import pinecone
 import json
 
-azure_api_key = config.azure_api_key
-azure_api_base = config.azure_api_base
-azure_chatapi_version = config.azure_chatapi_version
-azure_chatapi_version = config.azure_chatapi_version
-azure_gpt4_deploymentid = config.azure_gpt4_deploymentid
-azure_gpt4omini_deploymentid = config.azure_gpt4omini_deploymentid
-azure_embeddingapi_version = config.azure_embeddingapi_version
-azure_embedding_deploymentid = config.azure_embedding_deploymentid
-
 pinecone_api_key = config.pinecone_api_key
 pinecone_environment = config.pinecone_environment
 
+
 def extract_context_frompinecone(query):
+    """
+    Extract relevant context from Pinecone vector database for a given query.
     
-    embed_client = OpenAIAzure(
-        api_key = azure_api_key,  
-        api_version = azure_embeddingapi_version,
-        azure_endpoint =azure_api_base,
-    )
+    Args:
+        query: User's question about the Bhagavad Gita
+    
+    Returns:
+        str: Relevant context from the Gita verses
+    """
+    client = get_openai_client()
+    embedding_model = get_embedding_model()
+    
     holybook = "gita"
     pinecone.init(api_key=pinecone_api_key, environment=pinecone_environment)
     index = pinecone.Index(holybook)
+    
     # Get embeddings for the query
     try:
-        response = embed_client.embeddings.create(
+        response = client.embeddings.create(
             input=[query], 
-            model=azure_embedding_deploymentid,
-            )
+            model=embedding_model,
+        )
         embedding = response.data[0].embedding
-        # Find contex in pinecone
+        
+        # Find context in pinecone
         with open(f"./holybook/{holybook}.json", "r") as f:
             data = json.loads(f.read())
         res = index.query(vector=(embedding), top_k=8)
@@ -47,12 +48,27 @@ def extract_context_frompinecone(query):
 
     return context
 
-def gita_answer(query, history, model_name, max_tokens, temperature):
 
+def gita_answer(query, history, model_name, max_tokens, temperature):
+    """
+    Answer questions about the Bhagavad Gita using context from vector database.
+    
+    Args:
+        query: User's question
+        history: Conversation history
+        model_name: Name of the model to use for generation
+        max_tokens: Maximum tokens in response
+        temperature: Response creativity (0-1)
+    
+    Returns:
+        str: Assistant's response based on Gita context
+    """
     systemprompt = [{
         "role": "system",
         "content": "You are not an AI Language model. You will be a Bhagwad Gita assistant to the user. Restrict yourself to the context of the question."
     }]
+    
+    assistant_reply = ""
     try:
         # Set the initial conversation to the default system prompt
         conversation = systemprompt.copy()

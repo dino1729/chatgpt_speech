@@ -2,4 +2,5 @@ openai>=1.40.0
 nvidia-riva-client>=2.14.0
 RPi.GPIO
 PyYAML
-python-dotenv
+soundfile
+numpy

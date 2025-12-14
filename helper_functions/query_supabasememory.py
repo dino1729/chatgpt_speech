@@ -1,24 +1,13 @@
+"""Query memory palace stored in Supabase using OpenAI-compatible API."""
 import supabase
 from config import config
-from openai import AzureOpenAI as OpenAIAzure
+from helper_functions.openai_compat import get_openai_client, get_chat_model, get_embedding_model
 import argparse
 from typing import AsyncIterator, List, Tuple, Union, Dict, Optional
 import asyncio
 import random
 
-# Initialize OpenAI and Supabase clients
-azure_api_key = config.azure_api_key
-azure_api_base = config.azure_api_base
-
-azure_chatapi_version = config.azure_chatapi_version
-azure_gpt4_deploymentid = config.azure_gpt4_deploymentid
-
-azure_embedding_version = config.azure_embeddingapi_version
-azure_embedding_deploymentid = config.azure_embedding_deploymentid
-
-supabase_service_role_key = config.supabase_service_role_key
-public_supabase_url = config.public_supabase_url
-
+# Initialize Supabase config
 supabase_service_role_key = config.supabase_service_role_key
 public_supabase_url = config.public_supabase_url
 
@@ -31,7 +20,7 @@ syspromptmessage = f"""
     Additionally, for each topic, provide one historical anecdote that can go back up to 10,000 years ago when human civilization started. The lesson can include a key event, discovery, mistake, and teaching from various cultures and civilizations throughout history. This will help Dinesh gain a deeper understanding of the topic by learning from the past since if one does not know history, one thinks short term; if one knows history, one thinks medium and long term..
     
     Here's a bit more about Dinesh:
-    You should be a centrist politically. I reside in Hillsboro, Oregon, and I hold the position of Senior Analog Circuit Design Engineer with eight years of work experience. I am a big believer in developing Power Delivery IPs with clean interfaces and minimal maintenance. I like to work on Raspberry Pi projects and home automation in my free time. Recently, I have taken up the exciting hobby of creating LLM applications. Currently, I am engaged in the development of a fantasy premier league recommender bot that selects the most suitable players based on statistical data for a specific fixture, all while adhering to a budget. Another project that I have set my sights on is a generativeAI-based self-driving system that utilizes text prompts as sensor inputs to generate motor drive outputs, enabling the bot to control itself. The key aspect of this design lies in achieving a latency of 1000 tokens per second for the LLM token generation, which can be accomplished using a local GPU cluster. I am particularly interested in the field of physics, particularly relativity, quantum mechanics, game theory and the simulation hypothesis. I have a genuine curiosity about the interconnectedness of things and the courage to explore and advocate for interventions, even if they may not be immediately popular or obvious. My ultimate goal is to achieve success in all aspects of life and incorporate the “systems thinking” and “critical thinking” mindset into my daily routine. I aim to apply systems thinking to various situations, both professional and personal, to gain insights into different perspectives and better understand complex problems. Currently, I am captivated by the achievements of individuals like Chanakya, Nicholas Tesla, Douglas Englebart, JCR Licklider, and Vannevar Bush, and I aspire to emulate their success. I’m also super interested in learning more about game theory and how people behave in professional settings. I’m curious about the strategies that can be used to influence others and potentially advance quickly in the workplace. So, coach me on how to deliver my presentations, communicate clearly and concisely, and how to conduct myself in front of influential people. My ultimate goal is to lead a large organization where I can create innovative technology that can benefit billions of people and improve their lives.
+    You should be a centrist politically. I reside in Hillsboro, Oregon, and I hold the position of Senior Analog Circuit Design Engineer with eight years of work experience. I am a big believer in developing Power Delivery IPs with clean interfaces and minimal maintenance. I like to work on Raspberry Pi projects and home automation in my free time. Recently, I have taken up the exciting hobby of creating LLM applications. Currently, I am engaged in the development of a fantasy premier league recommender bot that selects the most suitable players based on statistical data for a specific fixture, all while adhering to a budget. Another project that I have set my sights on is a generativeAI-based self-driving system that utilizes text prompts as sensor inputs to generate motor drive outputs, enabling the bot to control itself. The key aspect of this design lies in achieving a latency of 1000 tokens per second for the LLM token generation, which can be accomplished using a local GPU cluster. I am particularly interested in the field of physics, particularly relativity, quantum mechanics, game theory and the simulation hypothesis. I have a genuine curiosity about the interconnectedness of things and the courage to explore and advocate for interventions, even if they may not be immediately popular or obvious. My ultimate goal is to achieve success in all aspects of life and incorporate the "systems thinking" and "critical thinking" mindset into my daily routine. I aim to apply systems thinking to various situations, both professional and personal, to gain insights into different perspectives and better understand complex problems. Currently, I am captivated by the achievements of individuals like Chanakya, Nicholas Tesla, Douglas Englebart, JCR Licklider, and Vannevar Bush, and I aspire to emulate their success. I'm also super interested in learning more about game theory and how people behave in professional settings. I'm curious about the strategies that can be used to influence others and potentially advance quickly in the workplace. So, coach me on how to deliver my presentations, communicate clearly and concisely, and how to conduct myself in front of influential people. My ultimate goal is to lead a large organization where I can create innovative technology that can benefit billions of people and improve their lives.
 
     ---
     
@@ -45,21 +34,19 @@ syspromptmessage = f"""
     ---
 """
 
-def generate_embeddings(text, model=azure_embedding_deploymentid):
-    client = OpenAIAzure(
-        api_key=azure_api_key,
-        azure_endpoint=azure_api_base,
-        api_version=azure_embedding_version,
-    )    
-    return client.embeddings.create(input = [text], model=model).data[0].embedding
+
+def generate_embeddings(text: str) -> list:
+    """Generate embeddings for the given text using OpenAI-compatible API."""
+    client = get_openai_client()
+    embedding_model = get_embedding_model()
+    return client.embeddings.create(input=[text], model=embedding_model).data[0].embedding
+
 
 def enhance_query_with_llm(userquery: str) -> str:
-    """Use Azure OpenAI to expand and clarify the user query for better semantic search."""
-    client = OpenAIAzure(
-        api_key=azure_api_key,
-        azure_endpoint=azure_api_base,
-        api_version=azure_chatapi_version,
-    )
+    """Use LLM to expand and clarify the user query for better semantic search."""
+    client = get_openai_client()
+    chat_model = get_chat_model("fast")
+    
     system_message = (
         "You are an expert at rephrasing and expanding user queries to maximize semantic search recall. "
         "Given a short or ambiguous user query, rewrite it as a detailed, explicit, and verbose description, "
@@ -71,7 +58,7 @@ def enhance_query_with_llm(userquery: str) -> str:
         {"role": "user", "content": userquery}
     ]
     response = client.chat.completions.create(
-        model=azure_gpt4_deploymentid,
+        model=chat_model,
         messages=messages,
         max_tokens=128,
         temperature=0.3
@@ -79,18 +66,29 @@ def enhance_query_with_llm(userquery: str) -> str:
     improved_query = response.choices[0].message.content.strip()
     return improved_query
 
-# Add a debug flag to the function signature and use it to control debug printing
+
 async def query_memorypalace_stream(
     userquery: str, 
     chat_history: Optional[List[Union[Tuple[str, str], Dict[str, str]]]] = None,
     debug: bool = False
 ) -> AsyncIterator[str]:
-
+    """
+    Stream responses from the memory palace for a given query.
+    
+    Args:
+        userquery: User's question
+        chat_history: Previous conversation history
+        debug: Whether to print debug information
+    
+    Yields:
+        str: Accumulated response chunks
+    """
     try:
         # Enhance user query for better semantic search
         improved_userquery = enhance_query_with_llm(userquery)
         if debug:
             print(f"\n--- DEBUG: Improved user query for embedding ---\n{improved_userquery}\n--- END DEBUG ---\n")
+        
         # Generate embeddings using improved query
         userquery_embedding = generate_embeddings(improved_userquery)
 
@@ -148,7 +146,7 @@ async def query_memorypalace_stream(
                         f"User: {user}\nAssistant: {assistant}"
                         for user, assistant in chat_history
                     )
-            except (IndexError, KeyError, AttributeError) as e:
+            except (IndexError, KeyError, AttributeError):
                 history_text = ""
 
         # Format retrieved chunks for LLM with similarity index
@@ -170,12 +168,10 @@ async def query_memorypalace_stream(
             print(prompt)
             print("\n--- END DEBUG ---\n")
 
-        # Initialize Azure OpenAI client
-        client = OpenAIAzure(
-            api_key=azure_api_key,
-            azure_endpoint=azure_api_base,
-            api_version=azure_chatapi_version,
-        )
+        # Initialize OpenAI-compatible client
+        client = get_openai_client()
+        chat_model = get_chat_model("smart")
+        
         # Set up the messages
         messages = [
             {
@@ -187,9 +183,10 @@ async def query_memorypalace_stream(
                 "content": prompt
             }
         ]
+        
         # Create the completion with streaming
         gpt_response = client.chat.completions.create(
-            model=azure_gpt4_deploymentid,
+            model=chat_model,
             messages=messages,
             max_tokens=1024,
             temperature=0.4,
@@ -205,6 +202,7 @@ async def query_memorypalace_stream(
     except Exception as e:
         print(f"Encountered an error: {e}")
         yield f"I apologize, but I encountered an error while processing your request. Please try again. Error: {str(e)}"
+
 
 def main():
     parser = argparse.ArgumentParser(description="Test query_memorypalace_stream standalone.")
@@ -228,6 +226,7 @@ def main():
             print("No output received from LLM.")
 
     asyncio.run(run_query())
+
 
 if __name__ == "__main__":
     main()

@@ -1,19 +1,17 @@
 azure-cognitiveservices-speech
 regex
 requests
-RPi.GPIO
 sounddevice
 soundfile
 tiktoken
-python-dotenv
 openai>=1.40.0
 nvidia-riva-client>=2.14.0
 newspaper3k
 llama-hub
-llama-index-llms-azure-openai
+llama-index-llms-openai
 llama-index-readers-file
 llama-index-readers-llama-parse
-llama-index-embeddings-azure-openai
+llama-index-embeddings-openai
 llama-index-agent-openai
 llama-index-tools-bing-search
 llama-index-tools-weather
@@ -27,7 +25,6 @@ pvporcupine
 # pyaudio
 # struct
 webrtcvad
-wave
 cohere
 groq
 google.generativeai
@@ -43,3 +40,4 @@ lxml_html_clean
 gpt_researcher
 numpy
 litellm
+pyyaml

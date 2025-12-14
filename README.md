@@ -175,7 +175,6 @@ arecord -d 5 test.wav && aplay test.wav
 - **OpenAI Python SDK** (>=1.40.0)
 - **RPi.GPIO** (for button control)
 - **PyYAML** (configuration management)
-- **python-dotenv** (environment variables)
 
 ### API Requirements
 - **OpenAI API Key** (GPT-4o-mini access)

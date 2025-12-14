@@ -1,11 +1,3 @@
-# Load environment variables from .env file (ensure this is at the very top)
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    print("python-dotenv is not installed. Please run: pip install python-dotenv")
-    exit(1)
-
 import os
 import time
 import logging
@@ -14,6 +6,9 @@ import yaml
 import sounddevice as sd
 import soundfile as sf
 import numpy as np
+
+# Load configuration from config/config.yml
+from config import config
 
 # Import NVIDIA Riva client for ASR and TTS
 try:
@@ -63,18 +58,18 @@ class NvidiaVoiceBotMacOS:
                 "interactions, and try to satisfy the user's needs as best as you can."
             )
         
-        # Get API keys from environment
-        self.nvidia_api_key = os.getenv('NVIDIA_NIM_API_KEY')
-        self.litellm_api_key = os.getenv('LITELLM_API_KEY')
-        self.litellm_base_url = os.getenv('LITELLM_BASE_URL')
+        # Get API keys from config
+        self.nvidia_api_key = config.nvidia_api_key
+        self.litellm_api_key = config.openai_compat_api_key
+        self.litellm_base_url = config.openai_compat_base_url
         
         if not self.nvidia_api_key:
-            logger.error("NVIDIA_NIM_API_KEY not found in environment variables")
-            raise ValueError("NVIDIA_NIM_API_KEY is required")
+            logger.error("nvidia_api_key not found in config/config.yml")
+            raise ValueError("nvidia_api_key is required")
         
         if not self.litellm_api_key or not self.litellm_base_url:
-            logger.error("LITELLM_API_KEY or LITELLM_BASE_URL not found in environment variables")
-            raise ValueError("LITELLM_API_KEY and LITELLM_BASE_URL are required")
+            logger.error("OpenAI-compatible config not found in config/config.yml")
+            raise ValueError("litellm_api_key/base_url or ollama config is required")
         
         # Initialize NVIDIA Riva clients
         if RIVA_AVAILABLE:
@@ -83,7 +78,7 @@ class NvidiaVoiceBotMacOS:
                 uri='grpc.nvcf.nvidia.com:443',
                 use_ssl=True,
                 metadata_args=[
-                    ['function-id', '1598d209-5e27-4d3c-8079-4751568b1081'],
+                    ['function-id', config.nvidia_asr_function_id],
                     ['authorization', f'Bearer {self.nvidia_api_key}']
                 ]
             )
@@ -94,7 +89,7 @@ class NvidiaVoiceBotMacOS:
                 uri='grpc.nvcf.nvidia.com:443',
                 use_ssl=True,
                 metadata_args=[
-                    ['function-id', '877104f7-e885-42b9-8de8-f6e4c6303969'],
+                    ['function-id', config.nvidia_tts_function_id],
                     ['authorization', f'Bearer {self.nvidia_api_key}']
                 ]
             )
@@ -121,19 +116,15 @@ class NvidiaVoiceBotMacOS:
         self.audio_file = "user_audio.wav"
         self.response_audio_file = "bot_response.wav"
         
-        # LLM settings - can be overridden via environment variable
-        # For faster voice responses, use non-reasoning models like:
-        # - gpt-4o-mini, gpt-4o
-        # - llama-3.1-70b-instruct, llama-3.1-8b-instruct
-        # - mistral-large, mixtral-8x7b
-        self.llm_model = os.getenv('VOICEBOT_LLM_MODEL', 'gpt-oss-120b')
+        # LLM settings - uses config models
+        # For faster voice responses, configure fast_llm in config/config.yml
+        self.llm_model = config.openai_compat_fast_model or config.openai_compat_default_model
         
         # Max tokens for LLM response
-        # Reasoning models need more tokens (500+), regular models can use less (150-300)
-        self.llm_max_tokens = int(os.getenv('VOICEBOT_MAX_TOKENS', '500'))
+        self.llm_max_tokens = 500
         
         # TTS voice
-        self.tts_voice = "Magpie-Multilingual.EN-US.Aria"
+        self.tts_voice = config.nvidia_tts_voice_name
         
         # Conversation management
         self.conversation_history = []

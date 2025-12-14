@@ -10,6 +10,7 @@ import sounddevice as sd
 import soundfile as sf
 import numpy as np
 from unittest.mock import Mock, MagicMock, patch
+from config import config
 
 print("="*60)
 print("Testing NVIDIA Voice Bot - Structure Validation")
@@ -82,17 +83,33 @@ except Exception as e:
 print("\n[Test 4] Configuration Loading")
 print("-"*60)
 try:
-    import yaml
-    with open('config/prompts.yml', 'r') as f:
-        config = yaml.safe_load(f)
-    
-    if 'system_prompt_content' in config:
-        prompt = config['system_prompt_content']
+    # Test that config module loads properly
+    print(f"✓ Config module loaded successfully")
+
+    # Check key API configurations
+    if config.nvidia_api_key:
+        print(f"✓ NVIDIA API key configured ({len(config.nvidia_api_key)} chars)")
+    else:
+        print("⚠ NVIDIA API key not configured")
+
+    if config.litellm_api_key:
+        print(f"✓ LiteLLM API key configured ({len(config.litellm_api_key)} chars)")
+    else:
+        print("⚠ LiteLLM API key not configured")
+
+    if config.litellm_base_url:
+        print(f"✓ LiteLLM base URL: {config.litellm_base_url}")
+    else:
+        print("⚠ LiteLLM base URL not configured")
+
+    # Test prompts.yml loading
+    if hasattr(config, 'system_prompt_content') and config.system_prompt_content:
+        prompt = config.system_prompt_content
         print(f"✓ System prompt loaded ({len(prompt)} chars)")
         print(f"  Preview: {prompt[:100]}...")
     else:
         print("✗ system_prompt_content not found in config")
-        
+
 except Exception as e:
     print(f"✗ Config loading failed: {e}")
 
@@ -103,11 +120,11 @@ print("-"*60)
 # Mock the nvidia.riva.client module
 sys.modules['nvidia.riva.client'] = MagicMock()
 
-# Create mock environment variables
+# Create mock environment variables using config values
 test_env = {
-    'NVIDIA_NIM_API_KEY': 'test_nvidia_key',
-    'LITELLM_API_KEY': 'test_litellm_key',
-    'LITELLM_BASE_URL': 'http://localhost:8000'
+    'NVIDIA_NIM_API_KEY': config.nvidia_api_key or 'test_nvidia_key',
+    'LITELLM_API_KEY': config.litellm_api_key or 'test_litellm_key',
+    'LITELLM_BASE_URL': config.litellm_base_url or 'http://localhost:4000/v1'
 }
 
 with patch.dict(os.environ, test_env):
@@ -182,7 +199,7 @@ print("✓ Script structure is correct")
 print("⚠ NVIDIA Riva client not installed (expected)")
 print("\nTo fully test with NVIDIA APIs:")
 print("  1. pip install nvidia-riva-client")
-print("  2. Add API keys to .env file")
+print("  2. Configure API keys in config/config.yml")
 print("  3. Run: python3 nvidia_voicebot_macos.py")
 print("="*60)
 

@@ -1,20 +1,25 @@
+# OpenAI-compatible provider selection: "litellm" or "ollama"
+llm_provider: "litellm"
 
-azure_api_key: ""
-azure_api_base: ""
-azure_chatapi_version: ""
-azure_embeddingapi_version: ""
+# LiteLLM Configuration (OpenAI-compatible endpoint)
+litellm_base_url: "http://localhost:4000/v1"
+litellm_api_key: ""
+litellm_fast_llm: ""
+litellm_smart_llm: ""
+litellm_strategic_llm: ""
+litellm_embedding: "text-embedding-3-large"
+litellm_default_model: ""
 
-azure_gpt4_deploymentid: ""
-openai_gpt4_modelname: ""
-azure_gpt4omini_deploymentid: ""
-openai_gpt4omini_modelname: ""
-azure_embedding_deploymentid: ""
-openai_embedding_modelname: ""
+# Ollama Configuration (OpenAI-compatible endpoint)
+ollama_base_url: "http://localhost:11434/v1"
+ollama_fast_llm: "qwen3:4b"
+ollama_smart_llm: "deepseek-r1:latest"
+ollama_strategic_llm: "deepseek-r1:latest"
+ollama_embedding: "nomic-embed-text"
+ollama_default_model: "qwen3:4b"
 
-llama2_api_key: ""
-llama2_api_base: ""
-
-rvctts_api_base: ""
+# NVIDIA NIM Configuration
+nvidia_api_key: ""
 
 # Supabase
 public_supabase_url: ""
@@ -28,31 +33,53 @@ pinecone_environment: ""
 bing_api_key: ""
 bing_endpoint: ""
 
-# PALM
+# Google/Gemini
 google_api_key: ""
 gemini_model_name: ""
+gemini_thinkingmodel_name: ""
+
+# Groq
 groq_api_key: ""
 
 # Cohere
 cohere_api_key: ""
 
-# weather agent
+# Weather agent
 openweather_api_key: ""
 
+# pyowm
+pyowm_api_key: ""
+
+# Yahoo SMTP server
+yahoo_id: ""
+yahoo_app_password: ""
+
+# Azure Speech Services (for TTS/STT, separate from LLM)
 azurespeechkey: ""
 azurespeechregion: ""
 azuretexttranslatorkey: ""
 
+# Firecrawl
+firecrawl_server_url: ""
+retriever: "firecrawl"
+
+# CORS Configuration
+cors:
+  allowed_origins: ""
+  allow_origin_regex: ""
+  environment: "development"
+
 paths:
-  UPLOAD_FOLDER: ""
-  BING_FOLDER: ""
-  SUMMARY_FOLDER: ""
-  VECTOR_FOLDER: ""
+  UPLOAD_FOLDER: "./data"
+  WEB_SEARCH_FOLDER: "./web_search_data"
+  BING_FOLDER: "./bing_data"
+  SUMMARY_FOLDER: "./data/summary_index"
+  VECTOR_FOLDER: "./data/vector_index"
 
 settings:
   temperature: 0.25
   max_tokens: 420
-  model_name: ""
+  model_name: "GEMINI"
   num_output: 1024
   max_chunk_overlap_ratio: 0.1
   max_input_size: 128000

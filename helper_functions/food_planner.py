@@ -1,32 +1,35 @@
-from openai import AzureOpenAI as OpenAIAzure
-from config import config
+"""Food craving satisfier using OpenAI-compatible API."""
+from helper_functions.openai_compat import get_openai_client, get_chat_model
 
-azure_api_key = config.azure_api_key
-azure_api_base = config.azure_api_base
-azure_chatapi_version = config.azure_chatapi_version
-azure_chatapi_version = config.azure_chatapi_version
-azure_gpt4omini_deploymentid = config.azure_gpt4omini_deploymentid
 
 def craving_satisfier(city, food_craving):
-
-    client = OpenAIAzure(
-        api_key=azure_api_key,
-        azure_endpoint=azure_api_base,
-        api_version=azure_chatapi_version,
-    )
+    """
+    Recommend restaurants based on user's food craving.
+    
+    Args:
+        city: City to search for restaurants
+        food_craving: Type of food the user wants (or "idk" for random suggestion)
+    
+    Returns:
+        str: Restaurant recommendations
+    """
+    client = get_openai_client()
+    model = get_chat_model("fast")
+    
     # If the food craving is input as "idk", generate a random food craving
-    if food_craving in ["idk","I don't know","I don't know what I want","I don't know what I want to eat","I don't know what I want to eat.","Idk"]:
+    if food_craving in ["idk", "I don't know", "I don't know what I want", 
+                        "I don't know what I want to eat", "I don't know what I want to eat.", "Idk"]:
         # Generate a random food craving
         foodsystem_prompt = [{
             "role": "system",
             "content": "You are a world class food recommender who is knowledgeable about all the food items in the world. You must respond in one-word answer."
         }]
         conversation1 = foodsystem_prompt.copy()
-        user_message1 = f"I don't know what to eat and I want you to generate a random cuisine. Be as creative as possible"
+        user_message1 = "I don't know what to eat and I want you to generate a random cuisine. Be as creative as possible"
         conversation1.append({"role": "user", "content": str(user_message1)})
 
         response1 = client.chat.completions.create(
-            model=azure_gpt4omini_deploymentid,
+            model=model,
             messages=conversation1,
             max_tokens=32,
             temperature=0.5,
@@ -45,7 +48,7 @@ def craving_satisfier(city, food_craving):
     user_message2 = f"I'm looking for 8 restaurants in {city} that serves {food_craving}. Provide me with a list of eight restaurants, including their brief addresses. Also, mention one dish from each that particularly stands out, ensuring it contains neither beef nor pork."
     conversation2.append({"role": "user", "content": str(user_message2)})
     response2 = client.chat.completions.create(
-        model=azure_gpt4omini_deploymentid,
+        model=model,
         messages=conversation2,
         max_tokens=2048,
         temperature=0.4,

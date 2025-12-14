@@ -1,5 +1,11 @@
+"""
+GPT Researcher wrapper module.
+
+Note: gpt_researcher may require environment variables to be set for its
+LLM and search providers. Ensure your config/config.yml has the necessary
+API keys, or set them as environment variables if required by gpt_researcher.
+"""
 from gpt_researcher import GPTResearcher
-import dotenv
 import asyncio
 import logging
 
@@ -9,8 +15,6 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
-dotenv.load_dotenv()
 
 async def get_report(query: str, report_type: str):
     try:

@@ -1,3 +1,8 @@
+"""
+Chat generation with internet connectivity using OpenAI-compatible LlamaIndex wrappers.
+
+Supports Bing search, weather queries, and GPT Researcher for complex queries.
+"""
 import os
 import requests
 import asyncio
@@ -7,8 +12,8 @@ from helper_functions.chat_generation import generate_chat
 from llama_index.agent.openai import OpenAIAgent
 from llama_index.tools.weather import OpenWeatherMapToolSpec
 from llama_index.tools.bing_search import BingSearchToolSpec
-from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
-from llama_index.llms.azure_openai import AzureOpenAI
+from llama_index.llms.openai import OpenAI as LlamaIndexOpenAI
+from llama_index.embeddings.openai import OpenAIEmbedding as LlamaIndexOpenAIEmbedding
 from newspaper import Article
 from bs4 import BeautifulSoup
 from llama_index.core.retrievers import VectorIndexRetriever
@@ -20,6 +25,7 @@ from llama_index.core.indices import SummaryIndex
 from llama_index.core import Settings
 from helper_functions.researcher import get_report
 
+# Get config values
 bing_api_key = config.bing_api_key
 bing_endpoint = config.bing_endpoint
 bing_news_endpoint = config.bing_news_endpoint
@@ -30,16 +36,11 @@ ques_template = config.ques_template
 summary_template = PromptTemplate(sum_template)
 qa_template = PromptTemplate(ques_template)
 
-azure_api_key = config.azure_api_key
-azure_api_base = config.azure_api_base
-azure_embeddingapi_version = config.azure_embeddingapi_version
-azure_chatapi_version = config.azure_chatapi_version
-azure_gpt4_deploymentid = config.azure_gpt4_deploymentid
-openai_gpt4_modelname = config.openai_gpt4_modelname
-azure_gpt4omini_deploymentid = config.azure_gpt4omini_deploymentid
-openai_gpt4omini_modelname = config.openai_gpt4omini_modelname
-azure_embedding_deploymentid = config.azure_embedding_deploymentid
-openai_embedding_modelname = config.openai_embedding_modelname
+# Get OpenAI-compatible configuration from config
+openai_compat_base_url = config.openai_compat_base_url
+openai_compat_api_key = config.openai_compat_api_key
+openai_compat_default_model = config.openai_compat_default_model
+openai_compat_embedding_model = config.openai_compat_embedding_model
 
 temperature = config.temperature
 max_tokens = config.max_tokens
@@ -50,18 +51,16 @@ max_input_size = config.max_input_size
 context_window = config.context_window
 keywords = config.keywords
 
-Settings.llm = AzureOpenAI(
-    azure_deployment=azure_gpt4_deploymentid, 
-    api_key=azure_api_key,
-    azure_endpoint=azure_api_base,
-    api_version=azure_chatapi_version,
+# Configure LlamaIndex Settings with OpenAI-compatible LLM and embeddings
+Settings.llm = LlamaIndexOpenAI(
+    model=openai_compat_default_model,
+    api_key=openai_compat_api_key,
+    api_base=openai_compat_base_url,
 )
-Settings.embed_model =AzureOpenAIEmbedding(
-    azure_deployment=azure_embedding_deploymentid,
-    api_key=azure_api_key,
-    azure_endpoint=azure_api_base,
-    api_version=azure_embeddingapi_version,
-    max_retries=3,
+Settings.embed_model = LlamaIndexOpenAIEmbedding(
+    model=openai_compat_embedding_model,
+    api_key=openai_compat_api_key,
+    api_base=openai_compat_base_url,
     embed_batch_size=1,
 )
 
@@ -75,25 +74,25 @@ if not os.path.exists(BING_FOLDER):
 
 system_prompt = config.system_prompt
 
-def saveextractedtext_to_file(text, filename):
 
-    # Save the output to the article.txt file
+def saveextractedtext_to_file(text, filename):
+    """Save extracted text to a file in the BING_FOLDER."""
     file_path = os.path.join(BING_FOLDER, filename)
     with open(file_path, 'w') as file:
         file.write(text)
-
     return f"Text saved to {file_path}"
 
+
 def clearallfiles_bing():
-    # Ensure the UPLOAD_FOLDER is empty
+    """Ensure the BING_FOLDER is empty."""
     for root, dir, files in os.walk(BING_FOLDER):
         for file in files:
             file_path = os.path.join(root, file)
             os.remove(file_path)
 
-def get_weather_data(query):
 
-    # Initialize OpenWeatherMapToolSpec
+def get_weather_data(query):
+    """Get weather data using OpenWeatherMap through LlamaIndex agent."""
     weather_tool = OpenWeatherMapToolSpec(key=openweather_api_key)
     agent = OpenAIAgent.from_tools(
         weather_tool.to_tool_list(),
@@ -102,10 +101,10 @@ def get_weather_data(query):
     )
     return str(agent.chat(query))
 
-def text_extractor(url, debug=False):
 
+def text_extractor(url, debug=False):
+    """Extract text from a URL using newspaper3k or BeautifulSoup."""
     if url:
-        # Extract the article
         article = Article(url)
         try:
             article.download()
@@ -128,8 +127,9 @@ def text_extractor(url, debug=False):
     else:
         return None
 
+
 def get_bing_agent(query):
-    
+    """Get Bing search results using LlamaIndex agent."""
     bing_tool = BingSearchToolSpec(
         api_key=bing_api_key,
     )
@@ -142,22 +142,18 @@ def get_bing_agent(query):
 
     return str(agent.chat(query))
 
+
 def summarize(data_folder):
-    
-    # Initialize a document
+    """Summarize documents in a folder using LlamaIndex."""
     documents = SimpleDirectoryReader(data_folder).load_data()
-    #index = VectorStoreIndex.from_documents(documents)
     summary_index = SummaryIndex.from_documents(documents)
-    # SummaryIndexRetriever
     retriever = summary_index.as_retriever(
         retriever_mode='default',
     )
-    # configure response synthesizer
     response_synthesizer = get_response_synthesizer(
         response_mode="tree_summarize",
         summary_template=summary_template,
     )
-    # assemble query engine
     query_engine = RetrieverQueryEngine(
         retriever=retriever,
         response_synthesizer=response_synthesizer,
@@ -166,15 +162,16 @@ def summarize(data_folder):
 
     return response
 
-def get_bing_news_results(query, num=5):
 
+def get_bing_news_results(query, num=5):
+    """Get news results from Bing and summarize them."""
     clearallfiles_bing()
     # Construct a request
     mkt = 'en-US'
-    params = { 'q': query, 'mkt': mkt, 'freshness': 'Day', 'count': num }
-    headers = { 'Ocp-Apim-Subscription-Key': bing_api_key }
+    params = {'q': query, 'mkt': mkt, 'freshness': 'Day', 'count': num}
+    headers = {'Ocp-Apim-Subscription-Key': bing_api_key}
     response = requests.get(bing_news_endpoint, headers=headers, params=params)
-    response_data = response.json()  # Parse the JSON response
+    response_data = response.json()
 
     # Extract text from the urls and append them into a single text variable
     all_urls = [result['url'] for result in response_data['value']]
@@ -198,22 +195,18 @@ def get_bing_news_results(query, num=5):
 
     return bingsummary
 
+
 def simple_query(data_folder, query):
-    
-    # Initialize a document
+    """Query documents in a folder using LlamaIndex vector search."""
     documents = SimpleDirectoryReader(data_folder).load_data()
-    #index = VectorStoreIndex.from_documents(documents)
     vector_index = VectorStoreIndex.from_documents(documents)
-    # configure retriever
     retriever = VectorIndexRetriever(
         index=vector_index,
         similarity_top_k=6,
     )
-    # # configure response synthesizer
     response_synthesizer = get_response_synthesizer(
         text_qa_template=qa_template,
     )
-    # # assemble query engine
     query_engine = RetrieverQueryEngine(
         retriever=retriever,
         response_synthesizer=response_synthesizer,
@@ -222,15 +215,16 @@ def simple_query(data_folder, query):
 
     return response
 
-def get_bing_results(query, num=10):
 
+def get_bing_results(query, num=10):
+    """Get web search results from Bing and answer the query."""
     clearallfiles_bing()
     # Construct a request
     mkt = 'en-US'
-    params = { 'q': query, 'mkt': mkt, 'count': num, 'responseFilter': ['Webpages','News'] }
-    headers = { 'Ocp-Apim-Subscription-Key': bing_api_key }
+    params = {'q': query, 'mkt': mkt, 'count': num, 'responseFilter': ['Webpages', 'News']}
+    headers = {'Ocp-Apim-Subscription-Key': bing_api_key}
     response = requests.get(bing_endpoint, headers=headers, params=params)
-    response_data = response.json()  # Parse the JSON response
+    response_data = response.json()
 
     # Extract snippets and append them into a single text variable
     all_snippets = [result['snippet'] for result in response_data['webPages']['value']]
@@ -247,8 +241,13 @@ def get_bing_results(query, num=10):
 
     return answer
 
+
 def internet_connected_chatbot(query, history, model_name, max_tokens, temperature, fast_response=True):
+    """
+    Chatbot with internet connectivity.
     
+    Performs web searches for queries containing keywords, otherwise uses the LLM directly.
+    """
     assistant_reply = "Sorry, I couldn't generate a response. Please try again."
     try:
         # Set the initial conversation to the default system prompt
@@ -288,6 +287,7 @@ def internet_connected_chatbot(query, history, model_name, max_tokens, temperatu
         conversation = system_prompt.copy()
 
     return assistant_reply
+
 
 def gpt_researcher(query):
     """

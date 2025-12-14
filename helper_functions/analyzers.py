@@ -1,3 +1,8 @@
+"""
+Analyzers module for processing videos, files, articles, and media.
+
+Uses OpenAI-compatible LlamaIndex wrappers for LLM and embedding operations.
+"""
 from config import config
 import os
 import shutil
@@ -17,9 +22,8 @@ from bs4 import BeautifulSoup
 from pytube import YouTube
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_audio
 from youtube_transcript_api import YouTubeTranscriptApi
-from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
-from openai import AzureOpenAI as OpenAIAzure
-from llama_index.llms.azure_openai import AzureOpenAI
+from llama_index.llms.openai import OpenAI as LlamaIndexOpenAI
+from llama_index.embeddings.openai import OpenAIEmbedding as LlamaIndexOpenAIEmbedding
 from llama_index.core import VectorStoreIndex, PromptHelper, SimpleDirectoryReader, StorageContext, load_index_from_storage, get_response_synthesizer
 from llama_index.core.indices import SummaryIndex
 from llama_index.core.query_engine import RetrieverQueryEngine
@@ -30,16 +34,11 @@ from llama_index.core import Settings
 logging.basicConfig(stream=sys.stdout, level=logging.CRITICAL)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 
-azure_api_key = config.azure_api_key
-azure_api_base = config.azure_api_base
-azure_embeddingapi_version = config.azure_embeddingapi_version
-azure_chatapi_version = config.azure_chatapi_version
-azure_gpt4_deploymentid = config.azure_gpt4_deploymentid
-openai_gpt4_modelname = config.openai_gpt4_modelname
-azure_gpt4omini_deploymentid = config.azure_gpt4omini_deploymentid
-openai_gpt4omini_modelname = config.openai_gpt4omini_modelname
-azure_embedding_deploymentid = config.azure_embedding_deploymentid
-openai_embedding_modelname = config.openai_embedding_modelname
+# Get OpenAI-compatible configuration from config
+openai_compat_base_url = config.openai_compat_base_url
+openai_compat_api_key = config.openai_compat_api_key
+openai_compat_default_model = config.openai_compat_default_model
+openai_compat_embedding_model = config.openai_compat_embedding_model
 
 supabase_service_role_key = config.supabase_service_role_key
 public_supabase_url = config.public_supabase_url
@@ -60,23 +59,16 @@ keywords = config.keywords
 # Set a flag for lite mode: Choose lite mode if you dont want to analyze videos without transcripts
 lite_mode = False
 
-Settings.client = OpenAIAzure(
-    api_key=azure_api_key,
-    azure_endpoint=azure_api_base,
-    api_version=azure_chatapi_version,
+# Configure LlamaIndex Settings with OpenAI-compatible LLM and embeddings
+Settings.llm = LlamaIndexOpenAI(
+    model=openai_compat_default_model,
+    api_key=openai_compat_api_key,
+    api_base=openai_compat_base_url,
 )
-Settings.llm = AzureOpenAI(
-    azure_deployment=azure_gpt4_deploymentid,
-    api_key=azure_api_key,
-    azure_endpoint=azure_api_base,
-    api_version=azure_chatapi_version,
-)
-Settings.embed_model = AzureOpenAIEmbedding(
-    azure_deployment=azure_embedding_deploymentid,
-    api_key=azure_api_key,
-    azure_endpoint=azure_api_base,
-    api_version=azure_embeddingapi_version,
-    max_retries=3,
+Settings.embed_model = LlamaIndexOpenAIEmbedding(
+    model=openai_compat_embedding_model,
+    api_key=openai_compat_api_key,
+    api_base=openai_compat_base_url,
     embed_batch_size=1,
 )
 text_splitter = SentenceSplitter()
@@ -101,25 +93,28 @@ if not os.path.exists(SUMMARY_FOLDER):
 if not os.path.exists(VECTOR_FOLDER):
     os.makedirs(VECTOR_FOLDER)
 
+
 def clearallfiles():
-    # Ensure the UPLOAD_FOLDER is empty
+    """Ensure the UPLOAD_FOLDER is empty."""
     for root, dir, files in os.walk(UPLOAD_FOLDER):
         for file in files:
             file_path = os.path.join(root, file)
             os.remove(file_path)
 
+
 def fileformatvaliditycheck(files):
-    # Function to check validity of file formats
+    """Function to check validity of file formats."""
     for file in files:
         file_name = file.name
-        # Get extention of file name
+        # Get extension of file name
         ext = file_name.split(".")[-1].lower()
         if ext not in ["pdf", "txt", "docx", "png", "jpg", "jpeg", "mp3"]:
             return False
     return True
 
-def build_index():
 
+def build_index():
+    """Build vector and summary indices from uploaded documents."""
     documents = SimpleDirectoryReader(UPLOAD_FOLDER).load_data()
     questionindex = VectorStoreIndex.from_documents(documents)
     questionindex.set_index_id("vector_index")
@@ -129,7 +124,9 @@ def build_index():
     summaryindex.set_index_id("summary_index")
     summaryindex.storage_context.persist(persist_dir=SUMMARY_FOLDER)
 
+
 def upload_data_to_supabase(title, url):
+    """Upload indexed data to Supabase."""
     try:
         # Load metadata and embedding index
         metadata_index = json.load(open(os.path.join(VECTOR_FOLDER, "docstore.json")))
@@ -150,10 +147,10 @@ def upload_data_to_supabase(title, url):
             content_text = doc_data["__data__"]["text"]
             content_length = len(content_text)
             content_tokens = len(tiktoken.get_encoding("cl100k_base").encode(content_text))
-            cleaned_content_text = re.sub(r'[^\w0-9./:^,&%@"!()?\\p{Sc}\'’“”]+|\s+', ' ', content_text, flags=re.UNICODE)
+            cleaned_content_text = re.sub(r'[^\w0-9./:^,&%@"!()?\\p{Sc}\''""]+|\s+', ' ', content_text, flags=re.UNICODE)
             embedding = embedding_index["embedding_dict"][doc_id]
 
-            result = supabase_client.table('mp').insert({
+            supabase_client.table('mp').insert({
                 'content_title': content_title,
                 'content_url': content_url,
                 'content_date': content_date,
@@ -170,8 +167,9 @@ def upload_data_to_supabase(title, url):
     except Exception as e:
         return f"An unexpected error occurred: {e}"
 
+
 def summary_generator():
-    
+    """Generate a summary of the indexed content."""
     try:
         summary = ask_fromfullcontext("Generate a summary of the input context. Be as verbose as possible.", summary_template).lstrip('\n')
     except Exception as e:
@@ -179,8 +177,9 @@ def summary_generator():
         summary = "Summary not available"
     return summary
 
+
 def example_generator():
-    
+    """Generate example questions based on the indexed content."""
     try:
         llmresponse = ask_fromfullcontext("Generate upto 8 questions. Output must be a list of lists, where each inner list contains only one question in string format enclosed in double qoutes", example_template).lstrip('\n')
         example_qs = ast.literal_eval(llmresponse.rstrip())
@@ -189,8 +188,9 @@ def example_generator():
         example_qs = example_queries
     return example_qs
 
+
 def ask_fromfullcontext(question, fullcontext_template):
-    
+    """Query the summary index with a question."""
     storage_context = StorageContext.from_defaults(persist_dir=SUMMARY_FOLDER)
     summary_index = load_index_from_storage(storage_context, index_id="summary_index")
     retriever = summary_index.as_retriever(
@@ -208,14 +208,17 @@ def ask_fromfullcontext(question, fullcontext_template):
     answer = response.response
     return answer
 
+
 def extract_video_id(url):
-    # Extract the video id from the url
+    """Extract the video id from the url."""
     match = re.search(r"youtu\.be\/(.+)", url)
     if match:
         return match.group(1)
     return url.split("=")[1]
 
+
 def get_video_title(url, video_id):
+    """Get the title of a YouTube video."""
     try:
         yt = YouTube(url)
         return yt.title
@@ -223,7 +226,9 @@ def get_video_title(url, video_id):
         print(f"Error occurred while getting video title: {str(e)}")
         return video_id
 
+
 def transcript_extractor(video_id):
+    """Extract transcript from a YouTube video."""
     try:
         transcript_list = YouTubeTranscriptApi.get_transcripts([video_id], languages=['en-IN', 'en'])
         transcript_text = " ".join([transcript["text"] for transcript in transcript_list[0][video_id]])
@@ -234,11 +239,15 @@ def transcript_extractor(video_id):
         print(f"Error occurred while downloading transcripts: {str(e)}")
         return False
 
+
 def video_downloader(url):
+    """Download a YouTube video."""
     yt = YouTube(url)
     yt.streams.filter(progressive=True, file_extension="mp4").order_by("resolution").desc().first().download(UPLOAD_FOLDER, filename="video.mp4")
 
+
 def process_video(url, memorize, lite_mode):
+    """Process a YouTube video: extract transcript or download, build index."""
     video_id = extract_video_id(url)
     video_title = get_video_title(url, video_id)
     video_memoryupload_status = "No data uploaded to Supabase."
@@ -261,7 +270,9 @@ def process_video(url, memorize, lite_mode):
         else:
             return "Youtube transcripts do not exist for this video!", None, None
 
+
 def analyze_ytvideo(url, memorize, lite_mode=False):
+    """Analyze a YouTube video."""
     clearallfiles()
     if not url or "youtube.com" not in url and "youtu.be" not in url:
         return {
@@ -282,18 +293,9 @@ def analyze_ytvideo(url, memorize, lite_mode=False):
     }
     return results
 
-def fileformatvaliditycheck(files):
-    # Function to check validity of file formats
-    for file in files:
-        file_name = file.name
-        # Get extention of file name
-        ext = file_name.split(".")[-1].lower()
-        if ext not in ["pdf", "txt", "docx", "png", "jpg", "jpeg", "mp3"]:
-            return False
-    return True
 
 def savetodisk(files):
-    
+    """Save uploaded files to disk."""
     filenames = []
     for file in files:
         filename_with_path = file.name
@@ -304,7 +306,9 @@ def savetodisk(files):
                 shutil.copyfileobj(f, f1)
     return filenames
 
+
 def process_files(files, memorize):
+    """Process uploaded files: validate, save, build index."""
     file_format_validity = fileformatvaliditycheck(files)
     if not file_format_validity:
         return "Please upload documents in pdf/txt/docx/png/jpg/jpeg format only.", None, None
@@ -320,7 +324,9 @@ def process_files(files, memorize):
     
     return "Files uploaded and Index built successfully!", summary, example_queries, file_title, file_memoryupload_status
 
+
 def analyze_file(files, memorize):
+    """Analyze uploaded files."""
     clearallfiles()
     if not files:
         return {
@@ -342,7 +348,9 @@ def analyze_file(files, memorize):
     
     return results
 
+
 def download_and_parse_article(url):
+    """Download and parse an article from a URL."""
     article = Article(url)
     try:
         article.download()
@@ -354,7 +362,9 @@ def download_and_parse_article(url):
         print(f"Failed to download and parse article from URL using newspaper package: {url}. Error: {str(e)}")
         return None
 
+
 def alternative_article_download(url):
+    """Alternative method to download article text using BeautifulSoup."""
     try:
         req = requests.get(url)
         soup = BeautifulSoup(req.content, 'html.parser')
@@ -363,11 +373,15 @@ def alternative_article_download(url):
         print(f"Failed to download article using beautifulsoup method from URL: {url}. Error: {str(e)}")
         return None
 
+
 def save_article_text(text):
+    """Save article text to a file."""
     with open(os.path.join(UPLOAD_FOLDER, "article.txt"), 'w') as f:
         f.write(text)
 
+
 def process_article(url, memorize):
+    """Process an article: download, parse, build index."""
     article = download_and_parse_article(url)
     if not article:
         article_text = alternative_article_download(url)
@@ -388,7 +402,9 @@ def process_article(url, memorize):
 
     return "Article downloaded and Index built successfully!", summary, example_queries, article_title, article_memoryupload_status
 
+
 def analyze_article(url, memorize):
+    """Analyze an article from a URL."""
     clearallfiles()
     if not url:
         return {
@@ -409,16 +425,22 @@ def analyze_article(url, memorize):
     }
     return results
 
+
 def extract_media_url_from_overcast(url):
+    """Extract media URL from an Overcast podcast page."""
     req = requests.get(url)
     soup = BeautifulSoup(req.content, 'html.parser')
     audio_tag = soup.find('audio')
     return audio_tag.source['src']
 
+
 def download_media_file(url):
+    """Download a media file from a URL."""
     return wget.download(url, UPLOAD_FOLDER)
 
+
 def rename_and_extract_audio(file_name):
+    """Rename media file and extract audio if necessary."""
     ext = file_name.split(".")[-1].lower()
     if ext in ["m4a", "mp3", "wav"]:
         os.rename(os.path.join(UPLOAD_FOLDER, file_name), os.path.join(UPLOAD_FOLDER, "audio.mp3"))
@@ -429,15 +451,21 @@ def rename_and_extract_audio(file_name):
     else:
         raise Exception("Invalid media file format")
 
+
 def transcribe_audio_with_whisper():
+    """Transcribe audio using Whisper."""
     model = whisper.load_model("base")
     return model.transcribe(os.path.join(UPLOAD_FOLDER, "audio.mp3"))
 
+
 def save_transcript(text):
+    """Save transcript to a file."""
     with open(os.path.join(UPLOAD_FOLDER, "media_transcript.txt"), "w") as f:
         f.write(text)
 
+
 def process_media(url, memorize):
+    """Process media: download, transcribe, build index."""
     try:
         if "overcast.fm" in url:
             url = extract_media_url_from_overcast(url)
@@ -461,7 +489,9 @@ def process_media(url, memorize):
 
     return "Media downloaded and Index built successfully!", summary, example_queries, media_title, media_memoryupload_status
 
+
 def analyze_media(url, memorize):
+    """Analyze media from a URL."""
     clearallfiles()
     if not url:
         return {

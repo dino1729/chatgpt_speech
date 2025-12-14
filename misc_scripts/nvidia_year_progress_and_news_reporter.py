@@ -1,10 +1,4 @@
-# Load environment variables from .env file
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    print("python-dotenv is not installed. Please run: pip install python-dotenv")
-
+"""NVIDIA Year progress and news reporter using OpenAI-compatible API."""
 import smtplib
 import os
 import time
@@ -13,7 +7,6 @@ import sys
 from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from openai import OpenAI
 from pyowm import OWM
 import random
 import supabase
@@ -24,10 +17,9 @@ import requests
 import json
 import re
 
-# Load only the config values we need directly from YAML
-config_dir = os.path.join(".", "config")
-with open(os.path.join(config_dir, "config.yml"), "r") as f:
-    config_yaml = yaml.safe_load(f)
+# Load configuration from config module
+from config import config
+from helper_functions.openai_compat import get_openai_client, get_chat_model, get_embedding_model
 
 # Setup logging
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -49,35 +41,29 @@ except ImportError:
     logger.warning("nvidia-riva-client is not installed. TTS will not be available.")
     RIVA_AVAILABLE = False
 
-# Configuration
-nvidia_api_key = os.getenv('NVIDIA_NIM_API_KEY')
-litellm_api_key = os.getenv('LITELLM_API_KEY')
-litellm_base_url = os.getenv('LITELLM_BASE_URL')
-yahoo_id = config_yaml.get('yahoo_id')
-yahoo_app_password = config_yaml.get('yahoo_app_password')
-pyowm_api_key = config_yaml.get('pyowm_api_key')
+# Configuration from config module
+nvidia_api_key = config.nvidia_api_key
+yahoo_id = config.yahoo_id
+yahoo_app_password = config.yahoo_app_password
+pyowm_api_key = config.pyowm_api_key
 
 # Supabase configuration
-supabase_service_role_key = config_yaml.get('supabase_service_role_key')
-public_supabase_url = config_yaml.get('public_supabase_url')
+supabase_service_role_key = config.supabase_service_role_key
+public_supabase_url = config.public_supabase_url
 
-# LLM settings
-llm_model = os.getenv('VOICEBOT_LLM_MODEL')
-if not llm_model:
-    raise ValueError("VOICEBOT_LLM_MODEL environment variable is required")
+# LLM settings from OpenAI-compatible config
+llm_model = config.openai_compat_default_model
 llm_max_tokens = 2048
 temperature = 0.4
-embedding_model = os.getenv("EMBEDDING_MODEL")
-if not embedding_model:
-    raise ValueError("EMBEDDING_MODEL environment variable is required")
+embedding_model_name = config.openai_compat_embedding_model
 
 # TTS settings
 sample_rate = 16000
 tts_voice = "Magpie-Multilingual.EN-US.Aria"
 
-# Firecrawl API settings
-firecrawl_base_url = os.getenv('FIRECRAWL_BASE_URL')
-firecrawl_api_key = os.getenv('FIRECRAWL_API_KEY')
+# Firecrawl API settings from config
+firecrawl_base_url = config.firecrawl_server_url
+firecrawl_api_key = "default"  # Local Firecrawl typically doesn't need auth
 
 # Topics list
 topics = [  
@@ -173,11 +159,8 @@ personalities = [
     "Gordon Moore", "Robert Noyce", "Andy Grove"
 ]
 
-# Initialize OpenAI client for LiteLLM
-llm_client = OpenAI(
-    api_key=litellm_api_key,
-    base_url=litellm_base_url
-)
+# Initialize OpenAI-compatible client from factory
+llm_client = get_openai_client()
 
 # Initialize NVIDIA Riva TTS
 if RIVA_AVAILABLE and nvidia_api_key:
@@ -317,18 +300,15 @@ def generate_gpt_response(user_message: str, system_prompt: str = None, max_toke
 
 
 def generate_embeddings(text: str) -> list:
-    """Generate embeddings using OpenAI embedding model."""
+    """Generate embeddings using OpenAI-compatible API."""
     try:
-        # For NVIDIA NIM embedding models, need to specify input_type for asymmetric models
         response = llm_client.embeddings.create(
             input=[text],
-            model=embedding_model,
-            extra_body={"input_type": "query"}  # Use "query" for search queries, "passage" for documents
+            model=get_embedding_model()
         )
         embedding = response.data[0].embedding
         
-        # Truncate to 1536 dimensions to match database
-        # NVIDIA embedding models produce 2048 dims, but database expects 1536
+        # Truncate to 1536 dimensions to match database if needed
         target_dimensions = 1536
         if len(embedding) > target_dimensions:
             embedding = embedding[:target_dimensions]

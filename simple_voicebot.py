@@ -59,28 +59,13 @@ def update_led(led_state, color=None, brightness=1.0):
 class SimpleVoiceBot:
     def __init__(self):
         """Initialize the voicebot with OpenAI client and configuration."""
-        # Initialize OpenAI client - try different configurations
+        # Initialize OpenAI client using config
         try:
-            # Check for custom base URL and API key
-            openai_api_key = os.getenv('OPENAI_API_KEY')
-            openai_base_url = os.getenv('OPENAI_BASE_URL')
-            
-            if openai_api_key and openai_base_url:
-                print(f"Using custom OpenAI API endpoint: {openai_base_url}")
-                self.client = OpenAI(
-                    api_key=openai_api_key,
-                    base_url=openai_base_url
-                )
-            elif openai_api_key:
-                print("Using direct OpenAI API")
-                self.client = OpenAI(api_key=openai_api_key)
-            else:
-                # Fall back to Azure/proxy configuration
-                print("Using Azure/Proxy API configuration")
-                self.client = OpenAI(
-                    api_key=config.azure_api_key,
-                    base_url=config.azure_api_base
-                )
+            print(f"Using OpenAI-compatible API endpoint: {config.openai_compat_base_url}")
+            self.client = OpenAI(
+                api_key=config.openai_compat_api_key,
+                base_url=config.openai_compat_base_url
+            )
         except Exception as e:
             logger.error(f"Failed to initialize OpenAI client: {e}")
             raise
@@ -92,7 +77,7 @@ class SimpleVoiceBot:
         self.recording_duration = 10  # max seconds to record - used for non-Pi recording
         
         # Model settings
-        self.model = "gpt-4o-mini-audio-preview"  # Use the correct available audio model
+        self.model = config.openai_audio_model  # Use the correct available audio model
         
         # Voice cycling setup - voices from the image
         self.available_voices = ["alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"]
@@ -340,7 +325,7 @@ class SimpleVoiceBot:
                 print("🔊 Synthesizing text response...")
                 try:
                     tts_response = self.client.audio.speech.create(
-                        model="tts-1", 
+                        model=config.openai_tts_model, 
                         voice=self.voice,
                         input=response_text
                     )

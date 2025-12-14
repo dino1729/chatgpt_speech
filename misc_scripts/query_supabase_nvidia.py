@@ -1,30 +1,8 @@
+"""Query Supabase memory palace using OpenAI-compatible API (NVIDIA variant)."""
 import supabase
 from config import config
-from openai import OpenAI
+from helper_functions.openai_compat import get_openai_client, get_chat_model, get_embedding_model
 import random
-import os
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
-
-# Get LiteLLM configuration from environment
-litellm_base_url = os.getenv("LITELLM_BASE_URL")
-litellm_api_key = os.getenv("LITELLM_API_KEY")
-
-# Model configuration
-embedding_model = os.getenv("EMBEDDING_MODEL")
-chat_model = os.getenv("SMART_LLM")
-
-# Remove the "openai:" prefix if present for consistency
-if chat_model.startswith("openai:"):
-    chat_model = chat_model.replace("openai:", "")
-
-# Initialize OpenAI client for LiteLLM proxy (handles both embeddings and chat)
-litellm_client = OpenAI(
-    api_key=litellm_api_key,
-    base_url=litellm_base_url
-)
 
 # Get Supabase credentials from config
 supabase_service_role_key = config.supabase_service_role_key
@@ -33,35 +11,37 @@ public_supabase_url = config.public_supabase_url
 # List of topics
 topics = ["How can I be more productive?", "How to improve my communication skills?", "How to be a better leader?", "How are electric vehicles less harmful to the environment?", "How can I think clearly in adverse scenarios?", "What are the tenets of effective office politics?", "How to be more creative?", "How to improve my problem-solving skills?", "How to be more confident?", "How to be more empathetic?", "What can I learn from Boyd, the fighter pilot who changed the art of war?", "How can I seek the mentorship I want from key influential people", "How can I communicate more effectively?", "Give me suggestions to reduce using filler words when communicating highly technical topics?"]
 
-def generate_embeddings(text, model=None, target_dimensions=1536):
-    """Generate embeddings via LiteLLM proxy (routes to NVIDIA NIM)
+def generate_embeddings(text: str, target_dimensions: int = 1536) -> list:
+    """Generate embeddings using OpenAI-compatible API.
     
     Args:
         text: Text to generate embeddings for
-        model: Embedding model to use (configured in LiteLLM)
         target_dimensions: Target dimension size (default 1536 to match database)
-    """
-    if model is None:
-        model = embedding_model
     
-    # LiteLLM routes to NVIDIA, but NVIDIA still requires input_type for asymmetric models
-    response = litellm_client.embeddings.create(
-        model=model,
-        input=[text],
-        extra_body={"input_type": "query"}  # Required for NVIDIA asymmetric embedding models
+    Returns:
+        list: Embedding vector
+    """
+    client = get_openai_client()
+    embedding_model = get_embedding_model()
+    
+    response = client.embeddings.create(
+        model=embedding_model,
+        input=[text]
     )
     embedding = response.data[0].embedding
     
     # Truncate embedding to match database dimensions if needed
-    # NVIDIA llama-3.2-nv-embedqa-1b-v2 produces 2048 dims, database expects 1536
     if len(embedding) > target_dimensions:
         embedding = embedding[:target_dimensions]
     
     return embedding
 
-def generate_gpt_response_memorypalace(user_message):
-    """Generate chat response via LiteLLM proxy (routes to configured chat model)"""
-    syspromptmessage = f"""
+def generate_gpt_response_memorypalace(user_message: str) -> str:
+    """Generate chat response using OpenAI-compatible API."""
+    client = get_openai_client()
+    chat_model = get_chat_model("smart")
+    
+    syspromptmessage = """
     You are EDITH, or "Even Dead, I'm The Hero," a world-class AI assistant that is designed by Tony Stark to be a powerful tool for whoever controls it. You help Dinesh in various tasks. In this scenario, you are helping Dinesh recall important concepts he learned and put them in a memory palace aka, his second brain. You will be given a topic along with the semantic search results from the memory palace. You need to generate a summary or lesson learned based on the search results. You have to praise Dinesh for his efforts and encourage him to continue learning. You can also provide additional information or tips to help him understand the topic better. You are not a replacement for human intelligence, but a tool to enhance Dinesh's intelligence. You are here to help Dinesh succeed in his learning journey. You are a positive and encouraging presence in his life. You are here to support him in his quest for knowledge and growth. You are EDITH, and you are here to help Dinesh succeed.
     
     Here's a bit more about Dinesh:
@@ -73,7 +53,7 @@ def generate_gpt_response_memorypalace(user_message):
         {"role": "user", "content": str(user_message)}
     ]
     
-    response = litellm_client.chat.completions.create(
+    response = client.chat.completions.create(
         model=chat_model,
         messages=messages,
         max_tokens=2048,
